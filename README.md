@@ -249,41 +249,86 @@ php -S localhost:8000
 ├── requirements.txt                # Python dependencies
 ├── config/                         # Configuration & constants
 │   ├── __init__.py
-│   └── constants.py               # 75+ centralized configuration values
-├── utils/                         # Shared utilities & helpers
+│   └── constants.py                # Centralized configuration values
+├── utils/                          # Shared utilities & helpers
 │   ├── __init__.py
-│   └── helpers.py                 # JSON extraction, error handling, validation
-├── ai_engine/                     # AI analysis & patch generation
+│   └── helpers.py                  # JSON extraction, error handling, validation
+├── ai_engine/                      # AI analysis & patch generation
 │   ├── __init__.py
-│   ├── ai_client.py              # Google Gemini API client wrapper
-│   ├── patch_generator.py        # Orchestrates patch generation pipeline
-│   ├── prompt_builder.py         # Specializes prompts by vulnerability type
-│   └── supabase_client.py        # Database & authentication
-├── api/                           # REST API endpoints
+│   ├── ai_client.py                # Google Gemini / LM Studio client wrapper
+│   ├── patch_generator.py          # Orchestrates patch generation pipeline
+│   ├── prompt_builder.py           # Specializes prompts by vulnerability type
+│   └── supabase_client.py          # Database & authentication
+├── api/                            # REST API endpoints
 │   ├── __init__.py
-│   ├── routes.py                 # Scan, report, and management endpoints
-│   └── auth.py                   # User authentication endpoints
-├── scanner/                       # Web crawling & discovery
+│   ├── routes.py                   # Scan, report, and management endpoints
+│   └── auth.py                     # User authentication endpoints
+├── scanner/                        # Web crawling & discovery
 │   ├── __init__.py
-│   ├── crawler.py                # Breadth-first web crawler
-│   ├── exporter.py               # Converts crawler output to vulnerabilities schema
-│   ├── payloads.py               # Security test payloads
-│   ├── test_scanner.py           # Unit tests
-│   └── test_integration.py       # Integration tests
-├── frontend/                      # Web UI
-│   ├── index.html                # Scanner dashboard
-│   ├── login.html
-│   ├── signup.html
-│   ├── history.html
-│   └── patches_index.html
-├── vulnerable_site/              # Test target with intentional vulnerabilities
+│   ├── crawler.py                  # Breadth-first web crawler
+│   ├── exporter.py                 # Converts crawler output to vulnerabilities schema
+│   ├── payloads.py                 # Security test payloads
+│   ├── test_scanner.py             # Unit tests
+│   └── test_integration.py         # Integration tests
+├── frontend/                       # Web UI
+│   ├── package.json
+│   ├── build/
+│   │   ├── asset-manifest.json
+│   │   ├── index.html
+│   │   ├── manifest.json
+│   │   ├── robots.txt
+│   │   └── static/
+│   │       ├── css/
+│   │       │   └── main.e8ee3074.css
+│   │       └── js/
+│   │           ├── main.fc98bc1f.js
+│   │           └── main.fc98bc1f.js.LICENSE.txt
+│   ├── public/
+│   │   ├── index.html
+│   │   ├── manifest.json
+│   │   └── robots.txt
+│   └── src/
+│       ├── index.js
+│       ├── app/
+│       │   ├── App.css
+│       │   └── App.js
+│       ├── components/
+│       │   ├── Charts.js
+│       │   ├── CodeBlock.js
+│       │   ├── FixesList.js
+│       │   ├── Header.js
+│       │   ├── Icons.js
+│       │   ├── index.js
+│       │   ├── ProgressBar.js
+│       │   ├── ReportCharts.js
+│       │   ├── ReportMetrics.js
+│       │   ├── ScanInput.js
+│       │   ├── SeverityBadge.js
+│       │   └── VulnerabilityList.js
+│       ├── config/
+│       │   └── constants.js
+│       ├── helpers/
+│       │   ├── historyHelpers.js
+│       │   ├── reportHelpers.js
+│       │   └── validationHelpers.js
+│       ├── pages/
+│       │   ├── DashboardPage.js
+│       │   ├── HistoryPage.js
+│       │   ├── index.js
+│       │   ├── LoginPage.js
+│       │   └── SignupPage.js
+│       └── styles/
+│           └── index.css
+├── reports/                        # Output directory
+│   ├── patches.json
+│   └── vulnerabilities.json
+├── vulnerable_site/                # Test target with intentional vulnerabilities
+│   ├── Atlasbank.sql
+│   ├── config.php
+│   ├── form_handler.php
 │   ├── index.php
-│   ├── sqli.php
-│   ├── xss.php
-│   └── form.php
-└── reports/                       # Output directory
-    ├── vulnerabilities.json      # Detected vulnerabilities
-    └── patches.json              # AI-generated patches
+│   └── style.css
+└── README.md                       # Project documentation
 ```
 
 ## Key Components
