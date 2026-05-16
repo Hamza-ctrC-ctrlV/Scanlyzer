@@ -3,15 +3,15 @@ import { IconBug, IconCode } from "../components/Icons";
 import { validateUrl } from "../helpers/validationHelpers";
 import { normalizeReport, getScoreColor, getScoreVerdict } from "../helpers/reportHelpers";
 import { addToHistory } from "../helpers/historyHelpers";
+import { generatePDF } from "../helpers/pdfHelper";
 import { ScanInput } from "../components/ScanInput";
 import { ProgressBar } from "../components/ProgressBar";
+import { MetricsSkeleton, VulnCardSkeleton } from "../components/Skeleton";
 import ReportMetrics from "../components/ReportMetrics";
 import ReportCharts from "../components/ReportCharts";
 import VulnerabilityList from "../components/VulnerabilityList";
 import FixesList from "../components/FixesList";
-import { API_URL } from "../config/constants";
-
-const SAVE_SCAN_URL = `${API_URL.replace('/api/scan', '')}/api/save-scan`;
+import { API_URL, SAVE_SCAN_URL } from "../config/constants";
 
 /**
  * Dashboard page — scanning and report display
@@ -25,6 +25,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
   const [stepIdx, setStepIdx] = useState(0);
   const [report, setReport] = useState(initialReport);
   const [tab, setTab] = useState("vulns");
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   useEffect(() => {
     if (!initialReport) return;
@@ -39,33 +40,36 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
     setUrlError(""); setApiError(""); setReport(null);
     setScanning(true); setProgress(0); setStepIdx(0);
 
-    const animSteps = async () => {
-      const targets = [12, 30, 52, 74, 92];
-      for (let i = 0; i < targets.length; i++) {
-        setStepIdx(i);
-        await new Promise(r=>setTimeout(r,700));
-        setProgress(targets[i]);
-      }
-    };
-    const anim = animSteps();
+    // Show skeleton as placeholder while scanning
+    setShowSkeleton(true);
 
     try {
+      const token = authUser?.token || localStorage.getItem("vulnscan_token");
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
         body: JSON.stringify({ url: url.trim() }),
       });
       const data = await res.json();
-      await anim;
       setProgress(100);
 
       if (!res.ok) {
         setApiError(data.error || data.message || "Erreur lors du scan.");
         setScanning(false);
+        setShowSkeleton(false);
         return;
       }
 
       const reportData = normalizeReport(data, url);
+
+      // Add total_duration from backend
+      if (data.scan_duration_total) {
+        reportData.scan_duration_total = data.scan_duration_total;
+      }
+
       setReport(reportData);
       setTab("vulns");
       addToHistory(reportData);
@@ -97,11 +101,12 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
         }
       }
 
-    } catch {
-      await anim;
-      setApiError(`Impossible de contacter Flask — vérifiez que le serveur répond`);
+    } catch (err) {
+      console.error("Scan fetch error:", err);
+      setApiError(`Impossible de contacter Flask — vérifiez que le serveur répond (${err.message || "erreur inconnue"})`);
     }
     setScanning(false);
+    setShowSkeleton(false);
   }, [url, authUser, onReportLoad]);
 
   const handleUrlChange = useCallback((value) => {
@@ -124,9 +129,17 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
         scanning={scanning}
       />
 
-      {scanning && <ProgressBar progress={progress} stepIdx={stepIdx} />}
+      {scanning && <ProgressBar progress={progress} stepIdx={stepIdx} targetUrl={url.trim()} scanning={scanning} />}
 
-      {!report && !scanning && (
+      {/* Skeleton loading state */}
+      {showSkeleton && !report && (
+        <section className="report fade-in" style={{ marginTop: "32px" }}>
+          <MetricsSkeleton />
+          <VulnCardSkeleton count={3} />
+        </section>
+      )}
+
+      {!report && !scanning && !showSkeleton && (
         <div className="empty-state">
           <div className="empty-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -158,18 +171,27 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
                   ? new Date(report.generated_at).toLocaleString("fr-FR")
                   : new Date().toLocaleString("fr-FR")}
               </div>
+              {report.scan_duration_total && (
+                <div className="rtb-duration">⏱ {report.scan_duration_total}s (total)</div>
+              )}
             </div>
           </div>
 
           <ReportMetrics report={report} scoreColor={scoreColor} scoreVerdict={scoreVerdict} />
           <ReportCharts report={report} />
 
-          <div className="tabs">
-            <button className={`tab-btn ${tab==="vulns"?"active":""}`} onClick={()=>setTab("vulns")}>
-              <IconBug/> Vulnérabilités ({report.total_patches})
-            </button>
-            <button className={`tab-btn ${tab==="fixes"?"active":""}`} onClick={()=>setTab("fixes")}>
-              <IconCode/> Correctifs IA
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div className="tabs" style={{ marginBottom: 0 }}>
+              <button className={`tab-btn ${tab==="vulns"?"active":""}`} onClick={()=>setTab("vulns")}>
+                <IconBug/> Vulnérabilités ({report.total_patches})
+              </button>
+              <button className={`tab-btn ${tab==="fixes"?"active":""}`} onClick={()=>setTab("fixes")}>
+                <IconCode/> Correctifs IA
+              </button>
+            </div>
+            <button className="btn-outline" onClick={() => generatePDF(report)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Exporter PDF
             </button>
           </div>
 

@@ -1,21 +1,18 @@
 import React from "react";
 
+import { IconCopy } from "./Icons";
+
 /**
  * Copy button for code blocks
  */
 function CopyBtn({ text }) {
   const [copied, setCopied] = React.useState(false);
-
   return (
-    <button
-      className={`copy-btn ${copied ? "copied" : ""}`}
-      onClick={() => {
-        navigator.clipboard.writeText(text || "");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-    >
-      {copied ? "Copié !" : "Copier"}
+    <button className={`copy-btn ${copied?"copied":""}`} onClick={() => {
+      navigator.clipboard.writeText(text||"");
+      setCopied(true); setTimeout(()=>setCopied(false), 2000);
+    }}>
+      <IconCopy/> {copied ? "Copié !" : "Copier"}
     </button>
   );
 }
@@ -29,7 +26,7 @@ function CopyBtn({ text }) {
  * @param {string} type - "vulnerable" or "fixed" determines styling
  * @param {boolean} showCopyBtn - Whether to show copy button (default: false)
  */
-function CodeBlock({ code, filename, type = "fixed", showCopyBtn = false }) {
+function CodeBlock({ code, filename, type = "fixed", showCopyBtn = true }) {
   const codeClassName = type === "vulnerable" ? "fix-code danger-code" : "fix-code success-code";
 
   return (

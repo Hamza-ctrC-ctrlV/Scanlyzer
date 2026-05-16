@@ -1,6 +1,6 @@
 {
-  "scan_id": "scan_20260505_225612",
-  "generated_at": "2026-05-06T00:02:57.761240",
+  "scan_id": "scan_20260516_232600",
+  "generated_at": "2026-05-17T00:26:05.335517",
   "total_patches": 3,
   "patches": [
     {
@@ -10,36 +10,36 @@
       "fichier": "xss.php",
       "url": "http://localhost:8000/xss.php",
       "champ": "q",
-      "explication": "The application takes user input from the 'q' parameter in the URL and displays it directly on the page without any sanitization or encoding. This allows an attacker to craft a malicious link containing a script tag; when a victim clicks this link, the browser executes the script, which can lead to session theft or unauthorized actions on the user's behalf.",
-      "solution": "Use the htmlspecialchars() function to encode special HTML characters, ensuring that the browser treats the input as literal text rather than executable code.",
-      "code_vulnerable": "<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"\"/>\n<button type=\"submit\">Search</button>\n</form>\n<?php echo $_GET['q']; ?>",
-      "code_corrige": "<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"\"/>\n<button type=\"submit\">Search</button>\n</form>\n<?php if (isset($_GET['q'])) { echo htmlspecialchars($_GET['q'], ENT_QUOTES, 'UTF-8'); } ?>",
+      "explication": "The provided code is vulnerable to Reflected Cross-Site Scripting (XSS) because it directly outputs user input from the 'q' GET parameter without proper sanitization or encoding. An attacker can inject malicious JavaScript code, which will be executed by the browser when the page is loaded, allowing the attacker to perform actions on behalf of the user or steal sensitive information.",
+      "solution": "The fix involves encoding user input using htmlspecialchars() with ENT_QUOTES and UTF-8 to prevent it from being interpreted as HTML or JavaScript.",
+      "code_vulnerable": "\n<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"\"/>\n<button type=\"submit\">Search</button>\n</form>\n",
+      "code_corrige": "\n<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES, 'UTF-8'); ?>\"/>\n<button type=\"submit\">Search</button>\n</form>\n",
       "status": "success"
     },
     {
       "vuln_id": "VULN-002",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
       "fichier": "form.php",
       "url": "http://localhost:8000/form.php",
       "champ": "name",
-      "explication": "The application accepts user input from the form and likely inserts it directly into a SQL query string on the server. This allows an attacker to input special SQL characters, such as ' OR '1'='1', which modifies the logic of the query to always be true, potentially allowing them to bypass authentication or access unauthorized database records.",
-      "solution": "Use PDO prepared statements with parameterized queries to ensure that user input is treated strictly as data and not as executable code.",
-      "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>",
-      "code_corrige": "<?php\n// Database configuration\n$host = 'localhost';\n$db   = 'app_database';\n$user = 'db_user';\n$pass = 'db_password';\n$charset = 'utf8mb4';\n\n$dsn = \"mysql:host=$host;dbname=$db;charset=$charset\";\n$options = [\n    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,\n    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,\n    PDO::ATTR_EMULATE_PREPARES   => false,\n];\n\ntry {\n    $pdo = new PDO($dsn, $user, $pass, $options);\n} catch (\\PDOException $e) {\n    die(\"Database connection failed.\");\n}\n\nif ($_SERVER[\"REQUEST_METHOD\"] == \"POST\") {\n    $name = $_POST['name'] ?? '';\n    $email = $_POST['email'] ?? '';\n\n    // Using a prepared statement to prevent SQL Injection\n    $stmt = $pdo->prepare(\"SELECT * FROM users WHERE name = :name AND email = :email\");\n    $stmt->execute(['name' => $name, 'email' => $email]);\n    $user = $stmt->fetch();\n\n    if ($user) {\n        echo \"User found: \" . htmlspecialchars($user['name']);\n    } else {\n        echo \"Invalid input or user not found.\";\n    }\n}\n?>\n\n<form action=\"form.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>",
+      "explication": "The provided code is an HTML form that submits to a different PHP file (submit.php), but the vulnerability report indicates an XSS Reflected issue related to the 'name' field. Although the exact 'submit.php' code isn't provided, the vulnerability likely occurs there. An attacker can inject malicious JavaScript code (like <script>alert('XSS')</script>) into the 'name' field. If this input is directly echoed or used without proper sanitization in 'submit.php', the attacker's code will be executed by the browser, leading to a Reflected XSS attack.",
+      "solution": "Use htmlspecialchars() with ENT_QUOTES and UTF-8 encoding on user input to prevent XSS Reflected attacks.",
+      "code_vulnerable": "\n<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>\n",
+      "code_corrige": "\n<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>\n",
       "status": "success"
     },
     {
       "vuln_id": "VULN-003",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
       "fichier": "form.php",
       "url": "http://localhost:8000/form.php",
       "champ": "email",
-      "explication": "The provided HTML form collects an email address and sends it to 'submit.php'. The vulnerability occurs on the server side when that email input is inserted directly into a SQL query string without validation or escaping. An attacker can use a payload like \"' OR '1'='1' --\" to change the query's logic, making the condition always true, which allows them to bypass authentication or extract all user data from the database.",
-      "solution": "Use PDO prepared statements with parameterized queries to ensure that user input is treated strictly as data and never as executable SQL code.",
-      "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>",
-      "code_corrige": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<label for=\"password\">Password</label>\n<input id=\"password\" name=\"password\" type=\"password\"/>\n<button type=\"submit\">Submit</button>\n</form>\n\n<?php\n// submit.php - Secure implementation\n$host = 'localhost';\n$db   = 'web_app';\n$user = 'db_user';\n$pass = 'secure_password';\n$charset = 'utf8mb4';\n\n$dsn = \"mysql:host=$host;dbname=$db;charset=$charset\";\n$options = [\n    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,\n    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,\n    PDO::ATTR_EMULATE_PREPARES   => false,\n];\n\ntry {\n    $pdo = new PDO($dsn, $user, $pass, $options);\n\n    // Use null coalescing operator to handle missing POST data\n    $email = $_POST['email'] ?? '';\n    $password = $_POST['password'] ?? '';\n\n    // 1. Use Prepared Statements to prevent SQL Injection\n    $stmt = $pdo->prepare(\"SELECT id, password_hash FROM users WHERE email = ?\");\n    $stmt->execute([$email]);\n    $user = $stmt->fetch();\n\n    // 2. Use password_verify to check hashed passwords (stored via password_hash)\n    if ($user && password_verify($password, $user['password_hash'])) {\n        echo \"Authentication successful.\";\n    } else {\n        echo \"Invalid email or password.\";\n    }\n} catch (\\PDOException $e) {\n    // Log error and show generic message to user\n    error_log($e->getMessage());\n    exit(\"A system error occurred. Please try again later.\");\n}\n?>",
+      "explication": "The provided code snippet is an HTML form that submits to another PHP file named 'submit.php'. Although the form itself doesn't directly process user input, the vulnerability report indicates that the 'email' field, when submitted, is reflected back in the response without proper sanitization, allowing for a Reflected Cross-Site Scripting (XSS) attack. An attacker can inject malicious JavaScript code, such as a script tag, and have it executed by the browser, potentially leading to unauthorized actions or data theft.",
+      "solution": "To fix the vulnerability, use htmlspecialchars() with ENT_QUOTES and UTF-8 encoding on user-input data when it's reflected back in the response.",
+      "code_vulnerable": "\n<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>\n",
+      "code_corrige": "\n<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>\n<?php\nif (isset($_POST['email'])) {\n  $email = htmlspecialchars($_POST['email'], ENT_QUOTES, 'UTF-8');\n  echo 'You entered: ' . $email;\n}\n?>\n",
       "status": "success"
     }
   ]

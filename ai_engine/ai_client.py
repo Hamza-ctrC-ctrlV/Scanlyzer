@@ -41,6 +41,8 @@ from typing import List
 
 from config.constants import (
     GEMINI_MODEL_ID,
+    GROQ_MODEL_ID,
+    GROQ_KEYS_LINK,
     GEMINI_FREE_TIER_RATE_LIMIT,
     RATE_LIMIT_WINDOW_SECONDS,
     API_REQUEST_TIMEOUT,
@@ -360,16 +362,88 @@ class LocalAIClient:
             logger.error(f"Unexpected error calling local AI: {e}")
             raise RuntimeError(f"Unexpected local AI error: {e}")
 
+class GroqAIClient:
+    """
+    Client for interacting with Groq API.
+    Provides fast inference for Llama/Mixtral models.
+    """
+    def __init__(self) -> None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY not found. "
+                f"Get a free key at {GROQ_KEYS_LINK} "
+                "and add it to your .env file."
+            )
+        
+        from groq import Groq
+        base_url = os.getenv("GROQ_BASE_URL")
+        if base_url:
+            self.client = Groq(api_key=api_key, base_url=base_url)
+        else:
+            self.client = Groq(api_key=api_key)
+            
+        # Using Llama 3 8B or Mixtral for fast JSON generation
+        self.model = os.getenv("GROQ_MODEL", GROQ_MODEL_ID)
+
+    @retry(
+        stop=stop_after_attempt(MAX_RETRY_ATTEMPTS),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(RuntimeError),
+        reraise=True
+    )
+    def send_prompt(self, prompt: str, timeout: int = API_REQUEST_TIMEOUT, model: str | None = None) -> str:
+        selected_model = model or self.model
+        logger.info(f"Sending prompt to Groq ({len(prompt)} chars) using {selected_model}...")
+        try:
+            # Append JSON instruction to ensure the API accepts the JSON format constraint
+            if "json" not in prompt.lower():
+                prompt += "\n\nRespond ONLY in valid JSON format."
+                
+            chat_completion = self.client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=selected_model,
+                response_format={"type": "json_object"},
+                timeout=timeout
+            )
+            response = chat_completion.choices[0].message.content
+            logger.info(f"Received response ({len(response)} chars)")
+            return response
+        except Exception as e:
+            logger.error(f"Groq API error: {str(e)}")
+            raise RuntimeError(f"Groq API error: {str(e)}")
+
+
 
 def get_ai_client() -> object:
     """Factory to return the configured AI client.
 
-    Environment variable `AI_BACKEND` controls the backend: `gemini` or `local`.
-    Defaults to `gemini` for backward compatibility.
+    Auto-detects backend based on available API keys. Gemini is prioritized.
+    Environment variable `AI_BACKEND` can be used to explicitly override.
     """
-    backend = os.getenv("AI_BACKEND", "gemini").lower()
+    backend = os.getenv("AI_BACKEND", "").lower()
+    
     if backend == "local":
         logger.info("Using LocalAIClient (AI_BACKEND=local)")
         return LocalAIClient()
+        
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+
+    if backend == "groq" and groq_key:
+        logger.info("Using GroqAIClient (AI_BACKEND=groq)")
+        return GroqAIClient()
+    elif backend == "gemini" and gemini_key:
+        logger.info("Using Gemini AIClient (AI_BACKEND=gemini)")
+        return AIClient()
+
+    # Auto-detect fallback
+    if gemini_key:
+        logger.info("Auto-selected Gemini AIClient (GEMINI_API_KEY found)")
+        return AIClient()
+    elif groq_key:
+        logger.info("Auto-selected GroqAIClient (GROQ_API_KEY found)")
+        return GroqAIClient()
+        
     logger.info("Using Gemini AIClient (default)")
     return AIClient()

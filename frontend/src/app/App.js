@@ -5,8 +5,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { HistoryPage } from "../pages/HistoryPage";
 import { LoginPage } from "../pages/LoginPage";
 import { SignupPage } from "../pages/SignupPage";
-import { HEALTH_URL, REPORT_URL } from "../config/constants";
-import { normalizeReport } from "../helpers/reportHelpers";
+import { HEALTH_URL } from "../config/constants";
 
 /**
  * Main App Component
@@ -14,34 +13,42 @@ import { normalizeReport } from "../helpers/reportHelpers";
  */
 export default function App() {
   const [page, setPage] = useState("login");
-  const [backendStatus, setBackendStatus] = useState("checking");
   const [selectedReport, setSelectedReport] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
-    let cancelled = false;
+    const savedTheme = localStorage.getItem("vulnscan_theme") || "dark";
+    setTheme(savedTheme);
+  }, []);
 
+  useEffect(() => {
+    if (theme === "light") {
+      document.body.setAttribute("data-theme", "light");
+    } else {
+      document.body.removeAttribute("data-theme");
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("vulnscan_theme", newTheme);
+  };
+
+  useEffect(() => {
     const checkBackend = async () => {
       try {
-        const res = await fetch(HEALTH_URL);
-        if (!cancelled) {
-          setBackendStatus(res.ok ? "online" : "offline");
-        }
+        await fetch(HEALTH_URL);
       } catch {
-        if (!cancelled) {
-          setBackendStatus("offline");
-        }
+        // Ignore error
       }
     };
 
     checkBackend();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -184,34 +191,6 @@ export default function App() {
     setSelectedReport(reportData);
   };
 
-  const handleSelectHistory = async (entry) => {
-    if (entry && Array.isArray(entry.patches)) {
-      setSelectedReport(entry);
-      setPage("dashboard");
-      return;
-    }
-
-    // fetch full report from backend
-    try {
-      const token = authUser?.token || localStorage.getItem("vulnscan_token");
-      const url = `${REPORT_URL}?scan_id=${encodeURIComponent(entry.scan_id)}`;
-      const res = await fetch(url, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-      const data = await res.json();
-      if (res.ok && data) {
-        const reportData = normalizeReport(data, entry.url || "");
-        setSelectedReport(reportData);
-      } else {
-        setSelectedReport(entry);
-      }
-    } catch (e) {
-      setSelectedReport(entry);
-    }
-
-    setPage("dashboard");
-  };
-
   if (authLoading) {
     return (
       <div className="app">
@@ -254,7 +233,7 @@ export default function App() {
       {(page === "dashboard" || page === "history") && authUser && (
         <>
           {page === "dashboard" && <div className="scanline" />}
-          <Header page={page} setPage={setPage} onLogout={handleLogout} userEmail={authUser.email} />
+          <Header page={page} setPage={setPage} onLogout={handleLogout} userEmail={authUser.email} theme={theme} toggleTheme={toggleTheme} />
 
           {page === "dashboard" && (
             <DashboardPage authUser={authUser} onReportLoad={handleLoadReport} initialReport={selectedReport} />
@@ -263,7 +242,6 @@ export default function App() {
           {page === "history" && (
             <HistoryPage
               authUser={authUser}
-              onSelect={handleSelectHistory}
               onBack={() => setPage("dashboard")}
             />
           )}

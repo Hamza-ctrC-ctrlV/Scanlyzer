@@ -430,14 +430,14 @@ CRAWL_DELAY_SECONDS = 0.5   # Delay between requests
 
 #### Endpoints
 
-| Method | Endpoint      | Rate Limit | Description |
-|--------|---------------|-----------|-------------|
-| POST   | `/api/scan` | 10/min | Run complete scan pipeline |
-| POST   | `/api/save-scan` | 20/min | Save scan to database |
-| GET    | `/api/scans` | 30/min | List user's scans |
-| GET    | `/api/report` | 30/min | Retrieve scan report |
-| DELETE | `/api/delete-scan` | 15/min | Remove scan (ownership required) |
-| GET    | `/api/health` | Unlimited | Health check |
+| Method | Endpoint      | Rate Limit | Description | Auth Required |
+|--------|---------------|-----------|-------------|---------------|
+| POST   | `/api/scan` | 10/min | Run complete scan pipeline | Yes |
+| POST   | `/api/save-scan` | 20/min | Save scan to database | Yes |
+| GET    | `/api/scans` | 30/min | List user's scans | Yes |
+| GET    | `/api/report` | 30/min | Retrieve scan report | Yes |
+| DELETE | `/api/delete-scan` | 15/min | Remove scan (ownership required) | Yes |
+| GET    | `/api/health` | Unlimited | Health check | No |
 
 #### Example: POST `/api/scan`
 ```bash
@@ -562,14 +562,14 @@ Sensitive data (API keys) automatically masked in logs.
 
 | Method | Endpoint | Rate Limit | Authentication | Description |
 |--------|----------|-----------|-----------------|-------------|
-| POST | `/api/scan` | 10/min | Optional | Run complete scan pipeline |
+| POST | `/api/scan` | 10/min | Required | Run complete scan pipeline |
 | POST | `/api/save-scan` | 20/min | Required | Save scan to database |
 | GET | `/api/scans` | 30/min | Required | List user's scans |
 | GET | `/api/report` | 30/min | Required | Retrieve scan report |
 | DELETE | `/api/delete-scan` | 15/min | Required | Remove scan (ownership required) |
 | GET | `/api/health` | Unlimited | No | Health check |
-| POST | `/api/auth/login` | 5/min | No | User login |
-| POST | `/api/auth/signup` | 5/min | No | User registration |
+| POST | `/auth/login` | 5/min | No | User login |
+| POST | `/auth/signup` | 5/min | No | User registration |
 
 ### POST /api/scan
 
@@ -794,12 +794,15 @@ def function_name(param1: str, param2: int) -> Dict[str, Any]:
 ## Security Considerations
 
 ### API Security
-✓ Rate limiting on all endpoints
+✓ Strict CORS policies restricting origins
+✓ Rate limiting on all endpoints, including Server-Sent Events
+✓ Global `@require_auth` decorator verifying JWT tokens
+✓ Ownership verification (IDOR prevention) using tokens instead of payload data
 ✓ Input validation on all endpoints
-✓ Ownership verification for user operations
 ✓ Error messages don't leak sensitive info
 
 ### Data Security
+✓ No hardcoded secrets (using `.env` exclusively)
 ✓ API keys masked in logs
 ✓ Sensitive values use safe masking function
 ✓ Token-based authentication

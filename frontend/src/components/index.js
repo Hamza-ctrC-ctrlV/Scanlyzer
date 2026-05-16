@@ -9,8 +9,8 @@ export { SeverityBadge } from "./SeverityBadge";
 export { Donut, ScoreRing } from "./Charts";
 export { ScanInput } from "./ScanInput";
 export { ProgressBar } from "./ProgressBar";
-export { ReportMetrics } from "./ReportMetrics";
-export { ReportCharts } from "./ReportCharts";
+export { default as ReportMetrics } from "./ReportMetrics";
+export { default as ReportCharts } from "./ReportCharts";
 export { VulnerabilityCard, VulnerabilityList } from "./VulnerabilityList";
-export { FixesList } from "./FixesList";
+export { default as FixesList } from "./FixesList";
 

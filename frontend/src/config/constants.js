@@ -2,11 +2,12 @@
  * Constants — App configuration, severity mapping, API endpoints
  */
 
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
 export const API_URL = `${API_BASE_URL}/api/scan`;
 export const SCANS_URL = `${API_BASE_URL}/api/scans`;
 export const REPORT_URL = `${API_BASE_URL}/api/report`;
 export const HEALTH_URL = `${API_BASE_URL}/api/health`;
+export const SAVE_SCAN_URL = `${API_BASE_URL}/api/save-scan`;
 export const DEFAULT_TARGET_URL = process.env.REACT_APP_TARGET_SITE_URL || "http://localhost:8000/";
 
 export const SEV = {

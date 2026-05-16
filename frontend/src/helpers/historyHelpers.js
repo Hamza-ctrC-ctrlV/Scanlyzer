@@ -6,7 +6,7 @@ import { SCANS_URL } from "../config/constants";
 
 const LS_KEY = "vulnscan_history";
 const LS_CACHE_TIMESTAMP = "vulnscan_history_timestamp";
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes cache
+const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
 
 /**
  * Load history from localStorage
@@ -64,34 +64,11 @@ export async function fetchHistoryFromSupabase(token) {
   }
 }
 
-/**
- * Smart load: use localStorage if valid, otherwise fetch from Supabase
- */
 export async function loadHistorySmart(token) {
-  // First: check if we have valid cached data
-  const cached = loadHistory();
-  
-  if (cached.length > 0 && isCacheValid()) {
-    // Cache is fresh, return immediately for fast UX
-    // Background sync can happen later if needed
-    return { success: true, data: cached, fromCache: true };
-  }
-
-  // Cache is stale or empty: fetch from Supabase
   const result = await fetchHistoryFromSupabase(token);
-  
-  if (result.success && result.data.length > 0) {
-    // Save fresh data to cache
-    saveHistory(result.data);
+  if (result.success) {
     return { success: true, data: result.data, fromCache: false };
   }
-
-  // Supabase fetch failed: fallback to stale cache if available
-  if (cached.length > 0) {
-    return { success: true, data: cached, fromCache: true, stale: true };
-  }
-
-  // No data at all
   return { success: false, data: [], error: result.error || "No scans found" };
 }
 
@@ -103,22 +80,13 @@ export function saveHistory(list) {
   localStorage.setItem(LS_CACHE_TIMESTAMP, Date.now().toString());
 }
 
-/**
- * Add new entry to history (deduplicates by scan_id, keeps latest 20)
- * Also updates cache timestamp
- */
 export function addToHistory(entry) {
-  const list = [entry, ...loadHistory().filter(h => h.scan_id !== entry.scan_id)].slice(0, 20);
-  saveHistory(list);
+  // Now handled by Supabase entirely
 }
 
-/**
- * Delete single entry from history by scan_id
- */
 export function deleteFromHistory(scanId) {
-  const updated = loadHistory().filter(h => h.scan_id !== scanId);
-  saveHistory(updated);
-  return updated;
+  // Handled by API
+  return [];
 }
 
 /**

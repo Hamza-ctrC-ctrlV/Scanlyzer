@@ -14,8 +14,8 @@ All endpoints include rate limiting and error handling.
 """
 
 import logging
-from typing import Dict, Tuple, Any
-from flask import Blueprint, request, jsonify
+from typing import Dict, Any
+from flask import Blueprint, request, jsonify, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from urllib.parse import urlparse
@@ -25,6 +25,7 @@ import os
 from functools import wraps
 
 from scanner.crawler import scan_forms
+from scanner.active_scanner import active_scan
 from scanner.exporter import build_vulnerabilities_report
 from ai_engine.patch_generator import PatchGenerator
 from ai_engine.ai_client import get_ai_client
@@ -43,95 +44,54 @@ api_bp = Blueprint("api_bp", __name__)
 # Lightweight per-process limiter for API endpoints
 limiter = Limiter(key_func=get_remote_address)
 
+REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
+
+# In-memory progress store (per target URL)
+scan_progress: Dict[str, Dict[str, Any]] = {}
+
+
+# ======================================================================
+# Shared helpers (DRY — used by both list and detail views)
+# ======================================================================
+
+SEVERITY_SCORE_MAP = {
+    "CRITICAL": 25,
+    "HIGH": 15,
+    "MEDIUM": 8,
+    "LOW": 3,
+    "INFO": 1,
+}
+
+EMPTY_STATS = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
+
+
+def _compute_scan_stats(patches: list) -> tuple:
+    """Compute score and severity stats from a list of patch dicts.
+
+    Returns:
+        (score, stats, patches_count)
+    """
+    stats = dict(EMPTY_STATS)
+    total_points = 0
+    count = 0
+
+    for p in patches:
+        if not isinstance(p, dict):
+            continue
+        count += 1
+        sev = (p.get("severity") or "").upper()
+        total_points += SEVERITY_SCORE_MAP.get(sev, 0)
+        if sev in stats:
+            stats[sev] += 1
+
+    score = max(0, 100 - total_points)
+    return score, stats, count
+
 
 def _parse_report_value(raw_value: Any) -> Any:
     """Parse a stored report from dict, JSON string, or storage URL/path."""
     if not raw_value:
         return None
-
-
-def _severity_score_points(severity: str | None) -> int:
-    mapping = {
-        "CRITICAL": 25,
-        "HIGH": 15,
-        "MEDIUM": 8,
-        "LOW": 3,
-        "INFO": 1,
-    }
-    return mapping.get((severity or "").upper(), 0)
-
-
-def _build_scan_summary_light(scan_row: dict) -> dict:
-    """Build a lightweight scan summary for list views (no report downloads).
-    
-    Only includes metadata and counts from database, avoiding expensive storage downloads.
-    """
-    target_url = scan_row.get("target_url") or scan_row.get("url") or ""
-    generated_at = scan_row.get("scan_date") or scan_row.get("created_at")
-    
-    # Use database counts directly - no parsing
-    vulnerabilities_count = scan_row.get("vulnerabilities_count", 0)
-    patches_count = scan_row.get("patches_count", 0)
-    
-    # Estimate score from severity distribution (we don't have the full data)
-    # Conservative estimate: assume moderate distribution
-    estimated_score = max(0, 100 - (patches_count * 3))  # Rough estimate
-    
-    # Parse stats from database if available, otherwise estimate
-    stats = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
-    
-    return {
-        "scan_id": scan_row.get("scan_id"),
-        "url": target_url,
-        "target_url": target_url,
-        "generated_at": generated_at,
-        "score": estimated_score,
-        "stats": stats,
-        "total_patches": patches_count,
-        "vulnerabilities_count": vulnerabilities_count,
-        "patches_count": patches_count,
-        # Don't include full reports in list view
-    }
-
-
-def _build_scan_summary(scan_row: dict) -> dict:
-    """Build a frontend-friendly scan summary from a database row with full reports.
-    
-    This downloads full reports from storage - only use for detail views.
-    """
-    vulnerabilities_report = _parse_report_value(scan_row.get("file_path_vulnerabilities")) or {}
-    patches_report = _parse_report_value(scan_row.get("file_path_patches")) or {}
-    patches = patches_report.get("patches", []) if isinstance(patches_report, dict) else []
-
-    total_points = sum(_severity_score_points(patch.get("severity")) for patch in patches if isinstance(patch, dict))
-    score = max(0, 100 - total_points)
-
-    stats = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
-    for patch in patches:
-        if not isinstance(patch, dict):
-            continue
-        severity = (patch.get("severity") or "").upper()
-        if severity in stats:
-            stats[severity] += 1
-
-    target_url = scan_row.get("target_url") or scan_row.get("url") or ""
-    generated_at = scan_row.get("scan_date") or scan_row.get("created_at")
-
-    return {
-        "scan_id": scan_row.get("scan_id"),
-        "url": target_url,
-        "target_url": target_url,
-        "generated_at": generated_at,
-        "score": score,
-        "stats": stats,
-        "total_patches": scan_row.get("patches_count", len(patches)),
-        "vulnerabilities_count": scan_row.get("vulnerabilities_count", len((vulnerabilities_report or {}).get("vulnerabilities", []))),
-        "patches_count": scan_row.get("patches_count", len(patches)),
-        "vulnerabilities_report": vulnerabilities_report,
-        "patches_report": patches_report,
-        "patches": patches,
-        "vulnerabilities": (vulnerabilities_report or {}).get("vulnerabilities", []),
-    }
 
     if isinstance(raw_value, (dict, list)):
         return raw_value
@@ -148,6 +108,137 @@ def _build_scan_summary(scan_row: dict) -> dict:
         except Exception as exc:
             logger.warning(f"Could not download report from storage: {exc}")
         return None
+
+
+def _build_scan_base(scan_row: dict) -> dict:
+    """Build the base fields shared by both list and detail scan summaries."""
+    target_url = scan_row.get("target_url") or scan_row.get("url") or ""
+    generated_at = scan_row.get("scan_date") or scan_row.get("created_at")
+
+    return {
+        "scan_id": scan_row.get("scan_id"),
+        "url": target_url,
+        "target_url": target_url,
+        "generated_at": generated_at,
+    }
+
+
+def _build_scan_summary_light(scan_row: dict) -> dict:
+    """Build a scan summary for list views.
+
+    Parses stored patches to compute accurate score and stats.
+    Falls back to estimates if parsing fails.
+    """
+    base = _build_scan_base(scan_row)
+    patches_count = scan_row.get("patches_count", 0)
+
+    # Try to parse patches for accurate score
+    score = max(0, 100 - (patches_count * 3))  # Fallback estimate
+    stats = dict(EMPTY_STATS)
+
+    scan_duration_total = None
+
+    try:
+        patches_report = _parse_report_value(scan_row.get("file_path_patches"))
+        if patches_report and isinstance(patches_report, dict):
+            scan_duration_total = patches_report.get("scan_duration_total")
+            patches = patches_report.get("patches", [])
+            if patches:
+                score, stats, patches_count = _compute_scan_stats(patches)
+    except Exception:
+        pass  # Use fallback estimate
+
+    return {
+        **base,
+        "score": score,
+        "stats": stats,
+        "total_patches": patches_count,
+        "vulnerabilities_count": scan_row.get("vulnerabilities_count", 0),
+        "patches_count": patches_count,
+        "scan_duration_total": scan_duration_total,
+    }
+
+
+def _build_scan_summary(scan_row: dict) -> dict:
+    """Build a frontend-friendly scan summary from a database row with full reports.
+
+    This downloads full reports from storage - only use for detail views.
+    """
+    base = _build_scan_base(scan_row)
+
+    vulnerabilities_report = _parse_report_value(scan_row.get("file_path_vulnerabilities")) or {}
+    patches_report = _parse_report_value(scan_row.get("file_path_patches")) or {}
+    patches = patches_report.get("patches", []) if isinstance(patches_report, dict) else []
+
+    score, stats, _ = _compute_scan_stats(patches)
+
+    return {
+        **base,
+        "score": score,
+        "stats": stats,
+        "total_patches": scan_row.get("patches_count", len(patches)),
+        "vulnerabilities_count": scan_row.get(
+            "vulnerabilities_count",
+            len((vulnerabilities_report or {}).get("vulnerabilities", [])),
+        ),
+        "patches_count": scan_row.get("patches_count", len(patches)),
+        "vulnerabilities_report": vulnerabilities_report,
+        "patches_report": patches_report,
+        "patches": patches,
+        "vulnerabilities": (vulnerabilities_report or {}).get("vulnerabilities", []),
+    }
+
+
+# ======================================================================
+# Authentication decorators
+# ======================================================================
+
+def _extract_token() -> str | None:
+    """Extract Bearer token from the Authorization header."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth.split(None, 1)[1].strip()
+    return None
+
+
+def _verify_user(token: str) -> dict | None:
+    """Verify a JWT token and return user info dict, or None on failure."""
+    from ai_engine.supabase_client import verify_token
+    result = verify_token(token)
+    if result.get("success"):
+        return result
+    return None
+
+
+def require_auth(f):
+    """Decorator that verifies the user's JWT token and injects `auth_user`
+    into the request context via `request.auth_user`.
+
+    Returns 401 if token is missing or invalid.
+    """
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        token = _extract_token()
+        if not token:
+            return jsonify(standardize_error_response(
+                False,
+                "Missing or invalid Authorization header",
+                error_code="UNAUTHORIZED"
+            )), 401
+
+        user_info = _verify_user(token)
+        if not user_info:
+            return jsonify(standardize_error_response(
+                False,
+                "Invalid or expired token",
+                error_code="UNAUTHORIZED"
+            )), 401
+
+        # Attach verified user info to the request
+        request.auth_user = user_info
+        return f(*args, **kwargs)
+
+    return wrapped
 
 
 def require_api_key(f):
@@ -180,38 +271,41 @@ def require_api_key(f):
     return wrapped
 
 
+# ======================================================================
+# Scan endpoints
+# ======================================================================
+
 @api_bp.route("/scan", methods=["POST"])
 @limiter.limit(SCAN_ROUTE_RATE_LIMIT)
+@require_auth
 def run_scan():
     """
     Run a security scan against a target URL.
-    
+
     Performs complete scan pipeline:
     1. Web crawling (forms and parameters discovery)
-    2. Vulnerability classification
-    3. AI-powered patch generation
-    
+    2. Active vulnerability testing
+    3. Vulnerability classification
+    4. AI-powered patch generation
+
     Request JSON:
         {
             "url": "http://target.com"  # Target URL to scan
         }
-    
+
     Returns:
         JSON with scan results including:
         - results: Raw crawler findings (forms, parameters, fields)
         - vulnerabilities_report: Standardized vulnerability schema
         - patches_report: AI-generated fixes and remediation guidance
-        
+
     Status Codes:
         200: Scan completed (even if vulnerabilities found)
         400: Invalid request (missing URL, invalid format)
+        401: Unauthorized
         500: Internal server error
-    
-    Side Effects:
-        - Makes HTTP requests to target and discovered URLs
-        - Calls Gemini API for each vulnerability
-        - Respects rate limiting on both crawler and API
     """
+    target = None
     try:
         data = request.get_json(force=True, silent=True)
         if not data or "url" not in data:
@@ -235,20 +329,34 @@ def run_scan():
         logger.info(f"Starting scan for {target}")
         started_at = time.time()
 
+        # Initialize progress tracking
+        scan_progress[target] = {"step": "crawling", "pct": 5, "msg": "Crawling du site...", "elapsed": 0}
+
         # Step 1: Run web crawler
         results = scan_forms(target, max_pages=30, max_depth=2)
-        scan_duration = round(time.time() - started_at, 2)
-        logger.info(f"Crawling complete in {scan_duration}s, found {len(results)} forms/parameters")
+        crawl_duration = round(time.time() - started_at, 2)
+        logger.info(f"Crawling complete in {crawl_duration}s, found {len(results)} forms/parameters")
+        scan_progress[target] = {"step": "active_scan", "pct": 25, "msg": f"Test actif de {len(results)} formulaire(s)...", "elapsed": crawl_duration}
 
-        # Step 2: Build vulnerability report from crawler results
+        # Step 2: Active scanning — actually submit payloads and verify
+        logger.info("Starting active vulnerability testing...")
+        results = active_scan(results)
+        active_duration = round(time.time() - started_at, 2)
+        logger.info(f"Active scan complete in {active_duration}s")
+        scan_progress[target] = {"step": "classification", "pct": 50, "msg": "Classification des vulnérabilités...", "elapsed": active_duration}
+
+        # Step 3: Build vulnerability report from enriched results
         vulnerabilities_report = build_vulnerabilities_report(
             results,
             target_url=target,
-            output_path=None,
-            scan_duration_seconds=scan_duration,
+            output_path=os.path.join(REPORTS_DIR, "vulnerabilities.json"),
+            scan_duration_seconds=active_duration,
         )
+        vuln_count = vulnerabilities_report.get("total_vulnerabilities", 0)
+        classify_duration = round(time.time() - started_at, 2)
+        scan_progress[target] = {"step": "ai_patches", "pct": 70, "msg": f"Génération IA pour {vuln_count} vulnérabilité(s)...", "elapsed": classify_duration}
 
-        # Step 3: Generate patches using AI (with graceful fallback)
+        # Step 4: Generate patches using AI (with graceful fallback)
         patches_report = None
         try:
             patch_generator = PatchGenerator()
@@ -256,10 +364,10 @@ def run_scan():
             requested_model = data.get("model")
             patches_report = patch_generator.generate_all_patches(
                 vulnerabilities_data=vulnerabilities_report,
-                output_path=None,
+                output_path=os.path.join(REPORTS_DIR, "patches.json"),
                 model=requested_model,
             )
-            logger.info(f"Generated patches for {vulnerabilities_report.get('total_vulnerabilities', 0)} vulnerabilities")
+            logger.info(f"Generated patches for {vuln_count} vulnerabilities")
         except ValueError as ai_error:
             logger.warning(f"AI patch generation failed: {ai_error}")
             # Still return vulnerabilities report, but with warning about patches
@@ -271,15 +379,24 @@ def run_scan():
                 "warning": str(ai_error),
             }
 
+        total_duration = round(time.time() - started_at, 2)
+        vulnerabilities_report["scan_duration_total"] = total_duration
+        if patches_report:
+            patches_report["scan_duration_total"] = total_duration
+        scan_progress[target] = {"step": "done", "pct": 100, "msg": "Scan terminé !", "elapsed": total_duration}
+
         return jsonify({
             "success": True,
             "results": results,
             "vulnerabilities_report": vulnerabilities_report,
             "patches_report": patches_report,
+            "scan_duration_total": total_duration,
         }), 200
 
     except Exception as e:
         logger.error(f"Scan endpoint error: {e}", exc_info=True)
+        if target:
+            scan_progress.pop(target, None)
         return jsonify(standardize_error_response(
             False,
             f"Scan failed: {str(e)}",
@@ -287,11 +404,44 @@ def run_scan():
         )), 500
 
 
+@api_bp.route("/scan-progress", methods=["GET"])
+@limiter.limit("30 per minute")
+def scan_progress_sse():
+    """
+    SSE endpoint — streams real-time scan progress to the frontend.
+    Query parameter: url (the target being scanned)
+    """
+    target = request.args.get("url", "")
+
+    def generate():
+        last_pct = -1
+        timeout = 0
+        while timeout < 300:  # 5 minute max
+            progress = scan_progress.get(target, {"step": "waiting", "pct": 0, "msg": "En attente...", "elapsed": 0})
+            if progress["pct"] != last_pct:
+                last_pct = progress["pct"]
+                yield f"data: {json_lib.dumps(progress)}\n\n"
+            if progress.get("step") == "done":
+                scan_progress.pop(target, None)
+                break
+            time.sleep(0.5)
+            timeout += 1
+
+    return Response(generate(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
+
+
+# ======================================================================
+# Health & AI endpoints
+# ======================================================================
+
 @api_bp.route("/health", methods=["GET"])
 def health():
     """
     Health check endpoint.
-    
+
     Returns:
         JSON: {"status": "ok"} if service is up
     """
@@ -346,33 +496,30 @@ def ai_generate():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ======================================================================
+# Scan persistence endpoints (all require auth)
+# ======================================================================
+
 @api_bp.route("/save-scan", methods=["POST"])
 @limiter.limit(SAVE_SCAN_RATE_LIMIT)
+@require_auth
 def save_scan_route():
     """
     Save completed scan to database.
-    
+
     Stores scan metadata and reports in Supabase for later retrieval.
     Reports are uploaded to Supabase Storage if configured.
-    
-    Request JSON:
-        {
-            "user_id": "uuid",
-            "email": "user@example.com",
-            "target_url": "http://target.com",
-            "scan_id": "scan_20240101_120000",
-            "vulnerabilities_count": 5,
-            "patches_count": 5,
-            "vulnerabilities_report": {...},  # Full report object
-            "patches_report": {...}           # Full report object
-        }
-    
+
+    The user_id is taken from the verified JWT token, NOT from the request body,
+    to prevent IDOR attacks.
+
     Returns:
         JSON: Save result with scan metadata
-        
+
     Status Codes:
         201: Scan successfully saved
         400: Invalid request or validation error
+        401: Unauthorized
         500: Database error
     """
     try:
@@ -386,8 +533,10 @@ def save_scan_route():
                 error_code="INVALID_REQUEST"
             )), 400
 
-        user_id = data.get("user_id")
-        email = data.get("email")
+        # Use verified user_id from token (prevents IDOR)
+        user_id = request.auth_user.get("user_id")
+        email = request.auth_user.get("email")
+
         target_url = data.get("target_url")
         vulnerabilities_count = data.get("vulnerabilities_count", 0)
         patches_count = data.get("patches_count", 0)
@@ -396,10 +545,10 @@ def save_scan_route():
         scan_id = data.get("scan_id")
 
         # Validate required fields
-        if not all([user_id, target_url, scan_id]):
+        if not all([target_url, scan_id]):
             return jsonify(standardize_error_response(
                 False,
-                "Missing required fields: user_id, target_url, scan_id",
+                "Missing required fields: target_url, scan_id",
                 error_code="MISSING_FIELDS"
             )), 400
 
@@ -444,47 +593,26 @@ def save_scan_route():
 
 @api_bp.route("/scans", methods=["GET"])
 @limiter.limit(REPORT_ROUTE_RATE_LIMIT)
+@require_auth
 def get_scans_route():
     """
     Get all scans for authenticated user.
-    
+
     Returns list of user's past scans with metadata (date, target URL, findings count).
-    
-    Headers:
-        Authorization: Bearer <token> (required for security - validates user ownership)
-    
+    User ID is extracted from the verified JWT token.
+
     Returns:
         JSON: List of scan objects with metadata
-        
+
     Status Codes:
         200: Successfully retrieved scan list
         401: Missing or invalid token
         400: Database error
     """
     try:
-        from ai_engine.supabase_client import get_user_scans, verify_token
+        from ai_engine.supabase_client import get_user_scans
 
-        # Get token from Authorization header
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return jsonify(standardize_error_response(
-                False,
-                "Missing or invalid Authorization header",
-                error_code="UNAUTHORIZED"
-            )), 401
-
-        token = auth_header.split(None, 1)[1].strip()
-        
-        # Verify token to get authenticated user_id
-        verify_result = verify_token(token)
-        if not verify_result.get("success"):
-            return jsonify(standardize_error_response(
-                False,
-                "Invalid token",
-                error_code="UNAUTHORIZED"
-            )), 401
-        
-        user_id = verify_result.get("user_id")
+        user_id = request.auth_user.get("user_id")
         logger.info(f"Fetching scans for authenticated user {user_id}")
         result = get_user_scans(user_id)
 
@@ -493,7 +621,7 @@ def get_scans_route():
             scans = [_build_scan_summary_light(scan) for scan in result["data"]]
             return jsonify({"success": True, "scans": scans}), 200
         else:
-            logger.warning(f"Failed to fetch scans for user {user_id}")
+            logger.warning(f"Failed to fetch scans")
             return jsonify(result), 400
 
     except Exception as e:
@@ -507,72 +635,53 @@ def get_scans_route():
 
 @api_bp.route("/report", methods=["GET"])
 @limiter.limit(REPORT_ROUTE_RATE_LIMIT)
+@require_auth
 def get_report_route():
     """
     Retrieve a specific scan report.
-    
+
     Returns complete vulnerability and patch reports for a scan.
-    Can fetch by scan_id or user_id (returns latest).
-    
+    Only returns reports owned by the authenticated user.
+
     Query Parameters:
-        scan_id (optional): UUID of specific scan
-        user_id (optional): UUID of user (returns latest scan)
-        
+        scan_id (required): UUID of specific scan
+
     Returns:
         JSON: Scan metadata + vulnerabilities_report + patches_report
-        
+
     Status Codes:
         200: Report retrieved successfully
         400: Invalid parameters or database error
+        401: Unauthorized
         404: Scan not found
-    
-    Note:
-        Either scan_id or user_id must be provided.
-        If both provided, scan_id takes precedence.
     """
     try:
-        from ai_engine.supabase_client import get_scan_by_id, get_user_scans
+        from ai_engine.supabase_client import get_scan_by_id
 
         scan_id = request.args.get("scan_id")
-        user_id = request.args.get("user_id")
+        user_id = request.auth_user.get("user_id")
 
-        scan_row = None
-
-        if scan_id:
-            logger.info(f"Fetching scan {scan_id}")
-            result = get_scan_by_id(scan_id)
-            if not result.get("success"):
-                return jsonify(result), 400
-            scan_row = result["data"]
-
-        elif user_id:
-            logger.info(f"Fetching latest scan for user {user_id}")
-            result = get_user_scans(user_id)
-            if not result.get("success"):
-                return jsonify(result), 400
-
-            scans = result.get("data", [])
-            if not scans:
-                return jsonify(standardize_error_response(
-                    False,
-                    "No scans found for this user",
-                    error_code="NOT_FOUND"
-                )), 404
-
-            # Find first scan with report data, fallback to most recent
-            scan_row = None
-            for scan in scans:
-                if scan.get("file_path_vulnerabilities") or scan.get("file_path_patches"):
-                    scan_row = scan
-                    break
-            if not scan_row:
-                scan_row = scans[0]
-        else:
+        if not scan_id:
             return jsonify(standardize_error_response(
                 False,
-                "Missing required parameter: scan_id or user_id",
+                "Missing required parameter: scan_id",
                 error_code="MISSING_PARAMETER"
             )), 400
+
+        logger.info(f"Fetching scan {scan_id} for user {user_id}")
+        result = get_scan_by_id(scan_id)
+        if not result.get("success"):
+            return jsonify(result), 400
+
+        scan_row = result["data"]
+
+        # Verify ownership — user can only access their own scans
+        if scan_row.get("user_id") != user_id:
+            return jsonify(standardize_error_response(
+                False,
+                "Scan not found",
+                error_code="NOT_FOUND"
+            )), 404
 
         vulnerabilities_report = _parse_report_value(scan_row.get("file_path_vulnerabilities"))
         patches_report = _parse_report_value(scan_row.get("file_path_patches"))
@@ -598,22 +707,22 @@ def get_report_route():
 
 @api_bp.route("/delete-scan", methods=["DELETE", "POST"])
 @limiter.limit(DELETE_SCAN_RATE_LIMIT)
+@require_auth
 def delete_scan_route():
     """
     Delete a scan from the database.
-    
+
     Removes scan record and associated reports from Supabase.
-    Requires user ownership verification - users can only delete their own scans.
-    
+    User ID is taken from the verified JWT token to enforce ownership.
+
     Request JSON:
         {
-            "user_id": "uuid",      # Requester's UUID
             "scan_id": "scan_xxx"   # UUID of scan to delete
         }
-    
+
     Returns:
         JSON: Deletion result
-        
+
     Status Codes:
         200: Scan successfully deleted
         400: Invalid request
@@ -622,7 +731,7 @@ def delete_scan_route():
         500: Database error
     """
     try:
-        from ai_engine.supabase_client import supabase_admin
+        from ai_engine.supabase_client import supabase_admin, _get_supabase_admin_client
 
         data = request.get_json(force=True, silent=True)
         if not data:
@@ -632,28 +741,23 @@ def delete_scan_route():
                 error_code="INVALID_REQUEST"
             )), 400
 
-        user_id = data.get("user_id")
+        # Use verified user_id from token (prevents IDOR)
+        user_id = request.auth_user.get("user_id")
         scan_id = data.get("scan_id")
 
-        if not user_id or not scan_id:
+        if not scan_id:
             return jsonify(standardize_error_response(
                 False,
-                "Missing user_id or scan_id",
+                "Missing scan_id",
                 error_code="MISSING_FIELDS"
             )), 400
 
-        if not supabase_admin:
-            logger.error("Supabase service role key not configured")
-            return jsonify(standardize_error_response(
-                False,
-                "Database not configured",
-                error_code="CONFIG_ERROR"
-            )), 500
+        admin_client = _get_supabase_admin_client()
 
         logger.info(f"Deleting scan {scan_id} for user {user_id}")
 
-        # Verify scan ownership
-        result = supabase_admin.table("scans").select("user_id").eq("scan_id", scan_id).execute()
+        # Verify scan ownership using the authenticated user_id
+        result = admin_client.table("scans").select("user_id").eq("scan_id", scan_id).execute()
         if not result.data:
             return jsonify(standardize_error_response(
                 False,
@@ -670,7 +774,7 @@ def delete_scan_route():
             )), 403
 
         # Delete the scan
-        supabase_admin.table("scans").delete().eq("scan_id", scan_id).execute()
+        admin_client.table("scans").delete().eq("scan_id", scan_id).execute()
         logger.info(f"Scan {scan_id} deleted successfully")
 
         return jsonify(standardize_error_response(

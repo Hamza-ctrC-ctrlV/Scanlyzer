@@ -17,7 +17,7 @@ DEFAULT_HOURLY_LIMIT = 50  # Scans per hour
 SCAN_ROUTE_RATE_LIMIT = "10 per minute"  # /scan endpoint
 SAVE_SCAN_RATE_LIMIT = "20 per minute"  # /save-scan endpoint
 REPORT_ROUTE_RATE_LIMIT = "30 per minute"  # /report endpoint
-DELETE_SCAN_RATE_LIMIT = "15 per minute"  # /delete-scan endpoint
+DELETE_SCAN_RATE_LIMIT = "50 per minute"  # /delete-scan endpoint
 AUTH_ROUTE_RATE_LIMIT = "5 per minute"  # Auth endpoints
 
 # Gemini API rate limiting
@@ -29,6 +29,8 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 # ==============================================================================
 
 GEMINI_MODEL_ID = "models/gemma-4-31b-it"
+GROQ_MODEL_ID = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_KEYS_LINK = "https://console.groq.com/keys"
 API_REQUEST_TIMEOUT = 30  # seconds
 MAX_RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_FACTOR = 2  # Exponential backoff multiplier

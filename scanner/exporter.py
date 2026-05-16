@@ -22,7 +22,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
-from ai_engine.ai_client import AIClient
+from ai_engine.ai_client import get_ai_client
 from ai_engine.prompt_builder import PromptBuilder
 from config.constants import (
     SCAN_ID_PREFIX,
@@ -85,7 +85,7 @@ def build_vulnerabilities_report(
     ai_client = None
     prompt_builder = PromptBuilder()
     try:
-        ai_client = AIClient()
+        ai_client = get_ai_client()
         logger.info("AI client initialized for vulnerability classification")
     except Exception as e:
         logger.warning(f"AI client initialization failed, will use fallback assessment: {e}")
@@ -109,25 +109,44 @@ def build_vulnerabilities_report(
             if field.get('type') in INJECTABLE_SKIP_TYPES:
                 continue
 
+            # If active scanning was run and field was NOT confirmed, skip it
+            is_confirmed = field.get('confirmed', None)
+            if is_confirmed is False:
+                logger.debug(f"Skipping unconfirmed field: {field.get('name')}")
+                continue
+
             vid = f"VULN-{vuln_id_counter:03d}"
             vuln_id_counter += 1
 
             code_vulnerable = field.get('code_vulnerable', '')
-            
-            # Classify vulnerability using AI or fallback
-            assessment = _assess_vulnerability(ai_client, prompt_builder, {
-                'id': vid,
-                'url': entry.get('page_url'),
-                'method': entry.get('method', 'GET'),
-                'champ': field.get('name'),
-                'payload_used': field.get('payload', ''),
-                'evidence': '',
-                'contexte_code': {
-                    'fichier': os.path.basename(entry.get('page_url') or ''),
-                    'ligne_estimee': 0,
-                    'code_vulnerable': code_vulnerable
+            active_evidence = field.get('evidence', '')
+            active_vuln_type = field.get('active_vuln_type', '')
+
+            # If active scan confirmed the vulnerability, use its type directly
+            # Otherwise fall back to AI classification
+            if active_vuln_type:
+                assessment = {
+                    'type': active_vuln_type,
+                    'severity': 'CRITICAL' if 'SQL' in active_vuln_type else 'HIGH',
+                    'confidence': 'HIGH',
+                    'description': active_evidence or f'Confirmed {active_vuln_type} via active testing.',
                 }
-            })
+                logger.info(f"Using active scan result for {vid}: {active_vuln_type}")
+            else:
+                # Classify vulnerability using AI or fallback
+                assessment = _assess_vulnerability(ai_client, prompt_builder, {
+                    'id': vid,
+                    'url': entry.get('page_url'),
+                    'method': entry.get('method', 'GET'),
+                    'champ': field.get('name'),
+                    'payload_used': field.get('payload', ''),
+                    'evidence': active_evidence,
+                    'contexte_code': {
+                        'fichier': os.path.basename(entry.get('page_url') or ''),
+                        'ligne_estimee': 0,
+                        'code_vulnerable': code_vulnerable
+                    }
+                })
 
             # Build vulnerability object
             vuln = {
@@ -138,8 +157,9 @@ def build_vulnerabilities_report(
                 'method': entry.get('method', 'GET'),
                 'champ': field.get('name'),
                 'payload_used': field.get('payload', ''),
-                'evidence': '',
+                'evidence': active_evidence or '',
                 'confidence': assessment.get('confidence', 'LOW'),
+                'confirmed': bool(is_confirmed),
                 'contexte_code': {
                     'fichier': os.path.basename(entry.get('page_url') or ''),
                     'ligne_estimee': 0,
@@ -148,7 +168,8 @@ def build_vulnerabilities_report(
                 'description': assessment.get('description', 'Automatically detected security finding.')
             }
             vulnerabilities.append(vuln)
-            logger.info(f"Found {vuln['type']} in {field.get('name')} at {entry.get('page_url')}")
+            status = "✓ CONFIRMED" if is_confirmed else "? unverified"
+            logger.info(f"[{status}] {vuln['type']} in {field.get('name')} at {entry.get('page_url')}")
 
     # Build final report
     report = {
@@ -173,7 +194,7 @@ def build_vulnerabilities_report(
 
 
 def _assess_vulnerability(
-    ai_client: Optional[AIClient],
+    ai_client: Optional[object],
     prompt_builder: PromptBuilder,
     vulnerability: Dict[str, Any]
 ) -> Dict[str, Any]:

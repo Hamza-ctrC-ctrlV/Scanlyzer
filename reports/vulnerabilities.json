@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan_20260505_225612",
+  "scan_id": "scan_20260516_232600",
   "target_url": "http://localhost:8000/",
-  "scan_date": "2026-05-05T22:56:12.451773",
-  "scan_duration_seconds": 2.08,
+  "scan_date": "2026-05-16T23:26:00.888868",
+  "scan_duration_seconds": 2.17,
   "pages_crawled": 2,
   "forms_found": 2,
   "total_vulnerabilities": 3,
@@ -15,48 +15,51 @@
       "method": "GET",
       "champ": "q",
       "payload_used": "<script>alert('XSS')</script>",
-      "evidence": "",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
+      "confirmed": true,
       "contexte_code": {
         "fichier": "xss.php",
         "ligne_estimee": 0,
         "code_vulnerable": "<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"\"/>\n<button type=\"submit\">Search</button>\n</form>"
       },
-      "description": "The application accepts user-supplied input via the 'q' GET parameter which is likely reflected in the response without proper sanitization, allowing for the execution of arbitrary JavaScript in the victim's browser."
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     },
     {
       "id": "VULN-002",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
       "url": "http://localhost:8000/form.php",
       "method": "POST",
       "champ": "name",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "",
+      "payload_used": "<script>alert('XSS')</script>",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
+      "confirmed": true,
       "contexte_code": {
         "fichier": "form.php",
         "ligne_estimee": 0,
         "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>"
       },
-      "description": "A classic SQL injection payload was detected in the 'name' field, indicating an attempt to bypass authentication or extract unauthorized data from the database."
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     },
     {
       "id": "VULN-003",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
       "url": "http://localhost:8000/form.php",
       "method": "POST",
       "champ": "email",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "",
+      "payload_used": "<script>alert('XSS')</script>",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
+      "confirmed": true,
       "contexte_code": {
         "fichier": "form.php",
         "ligne_estimee": 0,
         "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>"
       },
-      "description": "The email field is vulnerable to SQL injection, potentially allowing an attacker to bypass authentication or extract sensitive data from the database."
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     }
   ]
 }
