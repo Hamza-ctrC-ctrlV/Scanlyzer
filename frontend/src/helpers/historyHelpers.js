@@ -1,38 +1,11 @@
 /**
- * History management — localStorage helpers and Supabase integration with smart caching
+ * History management — Supabase integration
+ *
+ * All scan persistence is handled server-side via Supabase.
+ * This module provides the fetch/clear helpers used by HistoryPage.
  */
 
 import { SCANS_URL } from "../config/constants";
-
-const LS_KEY = "vulnscan_history";
-const LS_CACHE_TIMESTAMP = "vulnscan_history_timestamp";
-const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
-
-/**
- * Load history from localStorage
- * Returns array of scan entries or empty array if invalid
- */
-export function loadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(LS_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Check if local cache is still valid (less than CACHE_DURATION_MS old)
- */
-export function isCacheValid() {
-  try {
-    const timestamp = localStorage.getItem(LS_CACHE_TIMESTAMP);
-    if (!timestamp) return false;
-    const age = Date.now() - parseInt(timestamp);
-    return age < CACHE_DURATION_MS;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Fetch history from Supabase API with token verification (secure)
@@ -64,6 +37,9 @@ export async function fetchHistoryFromSupabase(token) {
   }
 }
 
+/**
+ * Smart history loader — fetches from Supabase directly
+ */
 export async function loadHistorySmart(token) {
   const result = await fetchHistoryFromSupabase(token);
   if (result.success) {
@@ -73,27 +49,9 @@ export async function loadHistorySmart(token) {
 }
 
 /**
- * Save history array to localStorage with timestamp
- */
-export function saveHistory(list) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
-  localStorage.setItem(LS_CACHE_TIMESTAMP, Date.now().toString());
-}
-
-export function addToHistory(entry) {
-  // Now handled by Supabase entirely
-}
-
-export function deleteFromHistory(scanId) {
-  // Handled by API
-  return [];
-}
-
-/**
- * Clear all history and cache timestamp
+ * Clear local history cache
  */
 export function clearHistory() {
-  localStorage.removeItem(LS_KEY);
-  localStorage.removeItem(LS_CACHE_TIMESTAMP);
+  localStorage.removeItem("vulnscan_history");
+  localStorage.removeItem("vulnscan_history_timestamp");
 }
-

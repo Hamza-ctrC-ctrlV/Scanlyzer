@@ -39,7 +39,12 @@ from utils.helpers import load_json_file
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO), format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 app = Flask(__name__)
+# Tell Flask it is behind a proxy so that request.remote_addr gets the real client IP.
+# 1 ensures it trusts the immediate upstream proxy (e.g. Nginx, ALB) for these headers.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 
 # ------------------------------------------------------------------
 # CORS — restrict to known origins; never use allow-all in production

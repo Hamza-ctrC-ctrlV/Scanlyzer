@@ -6,8 +6,10 @@ export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
 export const API_URL = `${API_BASE_URL}/api/scan`;
 export const SCANS_URL = `${API_BASE_URL}/api/scans`;
 export const REPORT_URL = `${API_BASE_URL}/api/report`;
+export const SCAN_RESULT_URL = `${API_BASE_URL}/api/scan-result`;
 export const HEALTH_URL = `${API_BASE_URL}/api/health`;
 export const SAVE_SCAN_URL = `${API_BASE_URL}/api/save-scan`;
+export const CHAT_URL = `${API_BASE_URL}/api/chat`;
 export const DEFAULT_TARGET_URL = process.env.REACT_APP_TARGET_SITE_URL || "http://localhost:8000/";
 
 export const SEV = {
@@ -19,3 +21,13 @@ export const SEV = {
 };
 
 export const SCAN_STEPS = ["Connexion","Crawling","Détection","Analyse IA","Rapport"];
+
+/** Maps backend step names to SCAN_STEPS index for the progress bar */
+export const STEP_MAP = {
+  waiting: 0,
+  crawling: 1,
+  active_scan: 2,
+  classification: 3,
+  ai_patches: 3,
+  done: 4,
+};

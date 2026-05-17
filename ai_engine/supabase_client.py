@@ -164,6 +164,18 @@ def save_scan(user_id: str, target_url: str, vulnerabilities_count: int,
         final_vul_path = file_path_vulnerabilities
         final_patch_path = file_path_patches
 
+        # Compute score and stats if patches_report is provided
+        query_suffix = ""
+        if patches_report and isinstance(patches_report, dict):
+            patches = patches_report.get("patches", [])
+            if patches:
+                from utils.helpers import compute_scan_stats
+                score, stats, _ = compute_scan_stats(patches)
+                import urllib.parse
+                encoded_stats = urllib.parse.quote(json.dumps(stats))
+                duration = patches_report.get("scan_duration_total", 0)
+                query_suffix = f"?score={score}&stats={encoded_stats}&duration={duration}"
+
         try:
             if vulnerabilities_report is not None:
                 bucket = os.getenv("SUPABASE_REPORTS_BUCKET", "vulnerabilities")
@@ -178,7 +190,7 @@ def save_scan(user_id: str, target_url: str, vulnerabilities_count: int,
                 object_path = f"{user_id}/{scan_id}-patches.json"
                 upload_res = upload_report_to_storage(bucket, object_path, json.dumps(patches_report, ensure_ascii=False).encode("utf-8"))
                 if upload_res.get("success"):
-                    final_patch_path = upload_res.get("public_url") or f"{bucket}/{object_path}"
+                    final_patch_path = (upload_res.get("public_url") or f"{bucket}/{object_path}") + query_suffix
         except Exception:
             # Fall back to storing raw JSON text if upload fails
             if vulnerabilities_report is not None:
@@ -186,15 +198,27 @@ def save_scan(user_id: str, target_url: str, vulnerabilities_count: int,
             if patches_report is not None:
                 final_patch_path = json.dumps(patches_report, ensure_ascii=False)
 
-        response = supabase_admin_client.table("scans").insert({
-            "user_id": user_id,
-            "target_url": target_url,
-            "vulnerabilities_count": vulnerabilities_count,
-            "patches_count": patches_count,
-            "file_path_vulnerabilities": final_vul_path,
-            "file_path_patches": final_patch_path,
-            "scan_id": scan_id,
-        }).execute()
+        # Prevent duplicate rows for the same scan_id
+        existing = supabase_admin_client.table("scans").select("id").eq("scan_id", scan_id).execute()
+        
+        if existing.data:
+            response = supabase_admin_client.table("scans").update({
+                "vulnerabilities_count": vulnerabilities_count,
+                "patches_count": patches_count,
+                "file_path_vulnerabilities": final_vul_path,
+                "file_path_patches": final_patch_path,
+            }).eq("scan_id", scan_id).execute()
+        else:
+            response = supabase_admin_client.table("scans").insert({
+                "user_id": user_id,
+                "target_url": target_url,
+                "vulnerabilities_count": vulnerabilities_count,
+                "patches_count": patches_count,
+                "file_path_vulnerabilities": final_vul_path,
+                "file_path_patches": final_patch_path,
+                "scan_id": scan_id,
+            }).execute()
+            
         return {"success": True, "data": response.data}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -206,19 +230,23 @@ def upload_report_to_storage(bucket: str, object_path: str, content_bytes: bytes
     Returns dict with keys: success, public_url (if available), path, error
     """
     try:
-        # upload expects a file-like object or bytes depending on SDK; try bytes first
-        # The supabase-py client exposes storage via `supabase_admin.storage`.
         logger.debug("Uploading to bucket '%s' at path '%s'", bucket, object_path)
         bucket_client = _get_supabase_admin_client().storage.from_(bucket)
-        # Attempt upload
+
+        # supabase-py 2.x requires file_options with content-type to avoid 400.
+        # upsert=true overwrites if the object already exists (re-saves the same scan).
+        file_options = {
+            "content-type": content_type,
+            "upsert": "true",
+        }
+
         try:
+            bucket_client.upload(path=object_path, file=content_bytes, file_options=file_options)
+            logger.debug("Upload successful")
+        except TypeError:
+            # Older SDK versions use positional args without file_options
             bucket_client.upload(object_path, content_bytes)
-            logger.debug("Upload successful via bytes")
-        except Exception as e:
-            # Some SDK versions expect a file-like object
-            logger.debug("Bytes upload failed: %s. Trying with BytesIO...", e)
-            bucket_client.upload(object_path, BytesIO(content_bytes))
-            logger.debug("Upload successful via BytesIO")
+            logger.debug("Upload successful (legacy SDK path)")
 
         # Try to obtain a public URL
         public_url = None
@@ -247,6 +275,7 @@ def upload_report_to_storage(bucket: str, object_path: str, content_bytes: bytes
         return {"success": False, "error": error_msg}
 
 
+
 def download_report_from_storage(public_url_or_path: str) -> dict:
     """Download a stored report. Accepts either a public URL or a stored path like 'bucket/object'.
 
@@ -256,6 +285,10 @@ def download_report_from_storage(public_url_or_path: str) -> dict:
         return {"success": False, "error": "Empty or invalid path"}
 
     try:
+        # Strip query parameters that might have been appended for metadata storage
+        if "?" in public_url_or_path:
+            public_url_or_path = public_url_or_path.split("?")[0]
+
         # Skip Windows paths (old format like C:\Users\...)
         if public_url_or_path.startswith("C:") or "\\" in public_url_or_path:
             return {"success": False, "error": f"Local file path not supported: {public_url_or_path}"}

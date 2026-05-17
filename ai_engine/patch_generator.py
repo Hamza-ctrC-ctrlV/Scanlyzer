@@ -65,8 +65,8 @@ class PatchGenerator:
         self,
         vulnerabilities_path: Optional[str] = None,
         output_path: Optional[str] = None,
-        vulnerabilities_data: Optional[Dict[str, Any]] = None
-        , model: Optional[str] = None
+        vulnerabilities_data: Optional[Dict[str, Any]] = None,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Main entry point for patch generation.
