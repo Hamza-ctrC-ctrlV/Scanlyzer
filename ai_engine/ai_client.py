@@ -26,7 +26,7 @@ import os
 import re
 import time
 import logging
-from typing import Optional
+from typing import Optional, List
 from google import genai
 from google.genai import errors as genai_errors
 from dotenv import load_dotenv
@@ -37,7 +37,6 @@ from tenacity import (
     retry_if_exception_type
 )
 import requests
-from typing import List
 
 from config.constants import (
     GEMINI_MODEL_ID,
@@ -57,7 +56,7 @@ from utils.helpers import mask_sensitive_value, validate_api_key_format
 load_dotenv()
 
 # Setup secure logging (never log full API key)
-logging.basicConfig(level=logging.INFO)
+# Note: logging.basicConfig() is called once in app.py — not repeated here.
 logger = logging.getLogger(__name__)
 
 

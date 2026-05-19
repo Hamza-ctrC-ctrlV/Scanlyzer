@@ -13,4 +13,5 @@ export { default as ReportMetrics } from "./ReportMetrics";
 export { default as ReportCharts } from "./ReportCharts";
 export { VulnerabilityCard, VulnerabilityList } from "./VulnerabilityList";
 export { default as FixesList } from "./FixesList";
+export { AIChat } from "./AIChat";
 

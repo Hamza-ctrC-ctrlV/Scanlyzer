@@ -68,6 +68,8 @@ export function HistoryPage({ authUser, onBack }) {
   }, [authUser]);
 
   const handleClearAll = () => {
+    if (!window.confirm("Êtes-vous sûr de vouloir TOUT effacer ? Cette action est irréversible.")) return;
+
     const currentHistory = [...history];
     clearHistory();
     setHistory([]);
@@ -93,6 +95,8 @@ export function HistoryPage({ authUser, onBack }) {
   };
 
   const handleDeleteOne = async (id) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer ce scan ?")) return;
+
     setHistory(prev => prev.filter(h => h.scan_id !== id));
     if (expandedId === id) { setExpandedId(null); }
 
