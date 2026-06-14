@@ -1,65 +1,10 @@
 {
-  "scan_id": "scan_20260614_151010",
+  "scan_id": "scan_20260614_181449",
   "target_url": "https://herbal-obstacle-greyhound.ngrok-free.dev/",
-  "scan_date": "2026-06-14T15:10:10.905667",
-  "scan_duration_seconds": 12.48,
-  "pages_crawled": 2,
-  "forms_found": 2,
-  "total_vulnerabilities": 3,
-  "vulnerabilities": [
-    {
-      "id": "VULN-001",
-      "type": "XSS Reflected",
-      "severity": "HIGH",
-      "url": "https://herbal-obstacle-greyhound.ngrok-free.dev/xss.php",
-      "method": "GET",
-      "champ": "q",
-      "payload_used": "<script>alert('XSS')</script>",
-      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "xss.php",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<form action=\"xss.php\" method=\"get\">\n<input name=\"q\" value=\"\"/>\n<button type=\"submit\">Search</button>\n</form>"
-      },
-      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
-    },
-    {
-      "id": "VULN-002",
-      "type": "XSS Reflected",
-      "severity": "HIGH",
-      "url": "https://herbal-obstacle-greyhound.ngrok-free.dev/form.php",
-      "method": "POST",
-      "champ": "name",
-      "payload_used": "<script>alert('XSS')</script>",
-      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "form.php",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>"
-      },
-      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
-    },
-    {
-      "id": "VULN-003",
-      "type": "XSS Reflected",
-      "severity": "HIGH",
-      "url": "https://herbal-obstacle-greyhound.ngrok-free.dev/form.php",
-      "method": "POST",
-      "champ": "email",
-      "payload_used": "<script>alert('XSS')</script>",
-      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "form.php",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<form action=\"submit.php\" method=\"post\">\n<label for=\"name\">Name</label>\n<input id=\"name\" name=\"name\"/>\n<label for=\"email\">Email</label>\n<input id=\"email\" name=\"email\"/>\n<button type=\"submit\">Submit</button>\n</form>"
-      },
-      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
-    }
-  ]
+  "scan_date": "2026-06-14T18:14:49.287394",
+  "scan_duration_seconds": 590.86,
+  "pages_crawled": 1,
+  "forms_found": 1,
+  "total_vulnerabilities": 0,
+  "vulnerabilities": []
 }

@@ -7,6 +7,19 @@ import { CodeBlock } from "./CodeBlock";
  * List of AI-generated fixes
  */
 function FixesList({ patches }) {
+  if (patches.length === 0) {
+    return (
+      <div className="fixes-list">
+        <div className="clean-scan-banner fade-in" style={{ padding: "32px 24px" }}>
+          <div className="clean-scan-title" style={{ fontSize: "1.5rem" }}>NO FIXES NEEDED</div>
+          <p className="clean-scan-desc" style={{ marginBottom: 0 }}>
+            No vulnerabilities were detected, so there are no patches to generate. Your code is looking great!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixes-list">
       {patches.map((p,i)=>{

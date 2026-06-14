@@ -59,9 +59,35 @@ def run_scan():
                 error_code="SSRF_PREVENTED"
             )), 400
 
-        scan_id = f"scan_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        # ── Domain verification gate ────────────────────────────────
+        # Users must verify ownership of a domain before scanning it.
         user_info = request.auth_user
         user_id = user_info.get("user_id", "anonymous")
+
+        from utils.helpers import extract_domain
+        from ai_engine.supabase_client import _get_supabase_admin_client
+        target_domain = extract_domain(target)
+
+        if target_domain:
+            supabase = _get_supabase_admin_client()
+            verification = (
+                supabase.table("domain_verifications")
+                .select("verified")
+                .eq("user_id", user_id)
+                .eq("domain", target_domain)
+                .eq("verified", True)
+                .limit(1)
+                .execute()
+            )
+            if not verification.data:
+                return jsonify(standardize_error_response(
+                    False,
+                    f"Domain not verified. Please verify ownership of \"{target_domain}\" before scanning. "
+                    f"Go to the Verify page to complete domain verification.",
+                    error_code="DOMAIN_NOT_VERIFIED"
+                )), 403
+
+        scan_id = f"scan_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
         logger.info(f"Initiating background scan {scan_id} for {target}")
         set_scan_progress(scan_id, user_id, {"step": "waiting", "pct": 0, "msg": "Initialisation du scan...", "elapsed": 0})
