@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan_20260614_194520",
+  "scan_id": "scan_20260614_202712",
   "target_url": "http://localhost/vulnerable_site/",
-  "scan_date": "2026-06-14T19:45:20.110235",
-  "scan_duration_seconds": 0.69,
+  "scan_date": "2026-06-14T20:27:12.686055",
+  "scan_duration_seconds": 0.68,
   "pages_crawled": 1,
   "forms_found": 1,
   "total_vulnerabilities": 11,

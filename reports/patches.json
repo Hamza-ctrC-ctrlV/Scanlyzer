@@ -1,6 +1,6 @@
 {
-  "scan_id": "scan_20260614_194520",
-  "generated_at": "2026-06-14T20:45:40.304855",
+  "scan_id": "scan_20260614_202712",
+  "generated_at": "2026-06-14T21:27:32.105548",
   "total_patches": 11,
   "patches": [
     {
@@ -10,10 +10,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "nom",
-      "explication": "The provided HTML code snippet represents a form field for user input. When submitted, the input data is sent to the server via the POST method. The vulnerability likely occurs in the PHP backend script that handles this form submission. An attacker can inject malicious SQL code by entering a payload like <payload>' OR '1'='1' --</payload> in the 'nom' field. This causes the SQL query to always return true, potentially allowing unauthorized access or data extraction. The error message 'you have an error in your sql syntax' indicates that the SQL query is being directly manipulated by user input, which is a hallmark of SQL injection vulnerability.",
-      "solution": "Use a PDO Prepared Statement to separate code from user input.",
-      "code_vulnerable": "<?php\n$nom = $_POST['nom'];\n$query = \"SELECT * FROM users WHERE name = '$nom'\";\n$result = mysqli_query($conn, $query);\nwhile ($row = mysqli_fetch_assoc($result)) {\n    echo $row['name'];\n}\n?>",
-      "code_corrige": "<?php\n$nom = $_POST['nom'];\n$stmt = $pdo->prepare(\"SELECT * FROM users WHERE name = :nom\");\n$stmt->bindParam(':nom', $nom);\n$stmt->execute();\nwhile ($row = $stmt->fetch()) {\n    echo $row['name'];\n}\n?>",
+      "explication": "The provided HTML code snippet represents a form field where a user can input their name. However, the vulnerability likely exists in the backend PHP script that handles this form submission, specifically where it processes the 'nom' field. When a user submits the form, the 'nom' value is presumably used directly in a SQL query without proper sanitization or parameterization. An attacker can exploit this by injecting malicious SQL code. For example, entering \"' OR '1'='1' --\" in the 'nom' field could trick the SQL query into always returning true, potentially allowing unauthorized access or data disclosure. The error message 'you have an error in your sql syntax' indicates that the SQL query is being directly manipulated.",
+      "solution": "Use a PDO Prepared Statement to parameterize the SQL query and prevent user input from being executed as SQL code.",
+      "code_vulnerable": "<?php\n$nom = $_POST['nom'];\n$query = \"SELECT * FROM users WHERE name = '$nom'\";\n$result = mysqli_query($conn, $query);\n?>",
+      "code_corrige": "<?php\n$nom = $_POST['nom'];\n$query = \"SELECT * FROM users WHERE name = :nom\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':nom', $nom);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
     },
     {
@@ -23,8 +23,8 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "prenom",
-      "explication": "The provided HTML code snippet represents a form field for a user's first name. When submitted, it is likely processed by a PHP backend script that interacts with a database. The vulnerability arises when user input is directly used in SQL queries without proper sanitization or parameterization. An attacker can inject malicious SQL by entering a specially crafted input, such as the provided payload: '<payload>' OR '1'='1' --</payload>'. This payload can trick the SQL query into always returning true, potentially allowing unauthorized access or data disclosure.",
-      "solution": "Use PDO Prepared Statements to separate code from user input.",
+      "explication": "The provided HTML code is a form input field for 'prenom'. When submitted, it is likely processed by a PHP backend script that constructs a SQL query using the 'prenom' value without proper sanitization. An attacker can inject malicious SQL by entering a payload like <payload>' OR '1'='1' --</payload> in the 'prenom' field. This causes the SQL query to become 'SELECT * FROM users WHERE prenom = '' OR '1'='1' --''', which always returns true, allowing unauthorized access. The error message 'you have an error in your sql syntax' indicates that the SQL injection was successful.",
+      "solution": "Use a PDO Prepared Statement to separate code from user input.",
       "code_vulnerable": "<?php\n$prenom = $_POST['prenom'];\n$query = \"SELECT * FROM users WHERE prenom = '$prenom'\";\n$result = mysqli_query($conn, $query);\n?>",
       "code_corrige": "<?php\n$prenom = $_POST['prenom'];\n$stmt = $pdo->prepare(\"SELECT * FROM users WHERE prenom = :prenom\");\n$stmt->bindParam(':prenom', $prenom);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
@@ -36,8 +36,8 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "email",
-      "explication": "The provided HTML code snippet is a form input for an email address. However, the vulnerability likely exists in the PHP backend script that handles this form submission. When the form is submitted, the email input is sent to the server via a POST request. If the server-side script uses a SQL query that directly incorporates the user's input without proper sanitization or parameterization, an attacker can inject malicious SQL code. In this case, the payload '<payload>' OR '1'='1' --</payload>' can be used to inject a SQL query that always evaluates to true, potentially allowing unauthorized access or data disclosure.",
-      "solution": "Use PDO Prepared Statements to separate the SQL logic from the user input data.",
+      "explication": "The provided HTML code snippet is a form with an email input field. When submitted, it likely sends a POST request to a PHP backend script that then queries a database using the provided email. The vulnerability arises when an attacker injects malicious SQL code through this input field. For example, if the backend script directly constructs a SQL query like 'SELECT * FROM users WHERE email = '$email'', an attacker could input '<payload>' OR '1'='1' --</payload>' to bypass authentication or retrieve unauthorized data. This happens because the input is not properly sanitized or parameterized, allowing an attacker to alter the SQL query's structure.",
+      "solution": "Use a PDO prepared statement to parameterize the SQL query and prevent user input from altering the query structure.",
       "code_vulnerable": "<?php\n$email = $_POST['email'];\n$query = \"SELECT * FROM users WHERE email = '$email'\";\n$result = mysqli_query($conn, $query);\n?>",
       "code_corrige": "<?php\n$email = $_POST['email'];\n$stmt = $pdo->prepare(\"SELECT * FROM users WHERE email = :email\");\n$stmt->bindParam(':email', $email);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
@@ -49,8 +49,8 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "telephone",
-      "explication": "The provided HTML code snippet is a form input for a telephone number. When submitted, it is likely processed by a PHP backend script that uses the 'telephone' field value directly in a SQL query without proper sanitization. This allows an attacker to inject malicious SQL code, as demonstrated by the payload '<payload>' OR '1'='1' --</payload>'. The SQL query likely looks something like 'SELECT * FROM users WHERE telephone = '$telephone''; when the attacker inputs the payload, the query becomes 'SELECT * FROM users WHERE telephone = '' OR '1'='1' --''', which always returns true, potentially allowing unauthorized access or data leakage.",
-      "solution": "Use a PDO Prepared Statement to separate code from user input.",
+      "explication": "The provided HTML code snippet is a form input for a telephone number. When submitted, it is likely processed by a PHP backend script that constructs a SQL query using the input value. If the SQL query is not properly sanitized, an attacker can inject malicious SQL code. In this case, the payload '<payload>' OR '1'='1' --</payload>' can be used to inject a SQL query that always returns true, potentially allowing unauthorized access to the database. The evidence of a SQL error in the server response suggests that the database is MySQL and that the query is vulnerable to injection.",
+      "solution": "Use a PDO Prepared Statement to separate the SQL logic from the user input data.",
       "code_vulnerable": "<?php\n$telephone = $_POST['telephone'];\n$query = \"SELECT * FROM users WHERE telephone = '$telephone'\";\n$result = mysqli_query($conn, $query);\n?>",
       "code_corrige": "<?php\n$telephone = $_POST['telephone'];\n$stmt = $pdo->prepare(\"SELECT * FROM users WHERE telephone = :telephone\");\n$stmt->bindParam(':telephone', $telephone);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
@@ -62,10 +62,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "cin",
-      "explication": "The provided HTML code snippet represents a form field for entering a CIN (Customer Identification Number). When submitted, this value is likely processed by a backend PHP script. The vulnerability arises because the CIN input is directly used in a SQL query without proper sanitization or parameterization. An attacker can inject malicious SQL by entering specific patterns, such as the payload '<payload>' OR '1'='1' --</payload>', which can trick the SQL interpreter into executing unintended queries. This can lead to unauthorized data access, modification, or even database compromise.",
-      "solution": "Use PDO Prepared Statements to separate code from user input data.",
-      "code_vulnerable": "<?php\n$cin = $_POST['cin'];\n$query = \"SELECT * FROM customers WHERE cin = '$cin'\";\n$result = mysqli_query($conn, $query);\nwhile($row = mysqli_fetch_assoc($result)) {\n    echo $row['name'];\n}\n?>",
-      "code_corrige": "<?php\n$cin = $_POST['cin'];\n$stmt = $pdo->prepare(\"SELECT * FROM customers WHERE cin = :cin\");\n$stmt->bindParam(':cin', $cin);\n$stmt->execute();\nwhile($row = $stmt->fetch()) {\n    echo $row['name'];\n}\n?>",
+      "explication": "The provided HTML code snippet represents a form field for entering a CIN (Customer Identification Number). When submitted, this value is likely processed by a backend PHP script that queries a database using the CIN as part of the query. The vulnerability arises because the CIN input is not properly sanitized or parameterized, allowing an attacker to inject malicious SQL code. For instance, if the backend script constructs a SQL query like 'SELECT * FROM customers WHERE cin = $_POST['cin']', an attacker can submit a CIN like <payload>' OR '1'='1' --</payload> to trick the database into executing unintended queries, potentially leading to unauthorized data access or modification.",
+      "solution": "Use PDO Prepared Statements to parameterize the CIN input, ensuring it's treated as a parameter rather than part of the SQL code.",
+      "code_vulnerable": "<?php\n$cin = $_POST['cin'];\n$query = \"SELECT * FROM customers WHERE cin = '$cin'\";\n$result = $pdo->query($query);\nwhile ($row = $result->fetch()) {\n    echo $row['name'] . \"<br />\";\n}\n?>",
+      "code_corrige": "<?php\n$cin = $_POST['cin'];\n$stmt = $pdo->prepare(\"SELECT * FROM customers WHERE cin = :cin\");\n$stmt->bindParam(':cin', $cin);\n$stmt->execute();\nwhile ($row = $stmt->fetch()) {\n    echo $row['name'] . \"<br />\";\n}\n?>",
       "status": "success"
     },
     {
@@ -75,10 +75,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "adresse",
-      "explication": "The provided HTML code snippet represents a form field for user input, specifically an 'adresse' field. When submitted, this input is likely processed by a backend PHP script. The vulnerability arises when this user-input data is directly incorporated into a SQL query without proper sanitization or parameterization. An attacker can exploit this by injecting malicious SQL code. For instance, if the backend script constructs a SQL query like 'SELECT * FROM users WHERE adresse = $_POST['adresse']', an attacker could input a value such as <payload>' OR '1'='1' --</payload> to trick the database into executing unintended queries, potentially leading to unauthorized data access or extraction.",
-      "solution": "Use a PDO Prepared Statement to parameterize the SQL query and prevent user input from being interpreted as SQL code.",
-      "code_vulnerable": "<?php\n$adresse = $_POST['adresse'];\n$query = \"SELECT * FROM users WHERE adresse = '$adresse'\";\n$result = $pdo->query($query);\nwhile ($row = $result->fetch()) {\n    echo $row['name'] . \"<br>\";\n}\n?>",
-      "code_corrige": "<?php\n$adresse = $_POST['adresse'];\n$stmt = $pdo->prepare(\"SELECT * FROM users WHERE adresse = :adresse\");\n$stmt->bindParam(':adresse', $adresse);\n$stmt->execute();\nwhile ($row = $stmt->fetch()) {\n    echo $row['name'] . \"<br>\";\n}\n?>",
+      "explication": "The provided HTML code snippet represents a form field for user input, specifically an address field. When submitted, the input data is sent to the server via the POST method. Assuming the server-side PHP code directly incorporates this input into a SQL query without proper sanitization or parameterization, an attacker can exploit this vulnerability to inject malicious SQL. The payload '<payload>' OR '1'='1' --</payload>' can be used to manipulate the SQL query. For instance, if the original query is 'SELECT * FROM users WHERE adresse = '$adresse'', injecting the payload would transform the query into 'SELECT * FROM users WHERE adresse = '' OR '1'='1' --''', which always evaluates to true, potentially allowing unauthorized access or data extraction.",
+      "solution": "Use PDO Prepared Statements to parameterize the SQL query and prevent user input from being directly interpreted as part of the SQL code.",
+      "code_vulnerable": "<?php\n$adresse = $_POST['adresse'];\n$query = \"SELECT * FROM users WHERE adresse = '$adresse'\";\n$result = mysqli_query($conn, $query);\nwhile($row = mysqli_fetch_assoc($result)) {\n    echo $row['name'];\n}\n?>",
+      "code_corrige": "<?php\n$adresse = $_POST['adresse'];\n$query = \"SELECT * FROM users WHERE adresse = :adresse\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':adresse', $adresse);\n$stmt->execute();\nwhile($row = $stmt->fetch()) {\n    echo $row['name'];\n}\n?>",
       "status": "success"
     },
     {
@@ -88,10 +88,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "ville",
-      "explication": "The provided code snippet is an HTML form with a select input for city (ville). However, the vulnerability likely occurs in the PHP backend that handles this form submission. When the form is submitted, the 'ville' value is likely directly inserted into a SQL query without proper sanitization or parameterization. An attacker can exploit this by submitting a malicious value, such as the provided payload '<payload>' OR '1'='1' --</payload>', which can alter the SQL query's logic, potentially allowing unauthorized access to data or database manipulation.",
-      "solution": "Use a PDO Prepared Statement to parameterize the SQL query and prevent user input from altering the query's structure.",
-      "code_vulnerable": "<?php\n$ville = $_POST['ville'];\n$query = \"SELECT * FROM cities WHERE name = '$ville'\";\n$result = $pdo->query($query);\nwhile ($row = $result->fetch()) {\n    echo $row['name'];\n}\n?>",
-      "code_corrige": "<?php\n$ville = $_POST['ville'];\n$stmt = $pdo->prepare(\"SELECT * FROM cities WHERE name = :ville\");\n$stmt->bindParam(':ville', $ville);\n$stmt->execute();\nwhile ($row = $stmt->fetch()) {\n    echo $row['name'];\n}\n?>",
+      "explication": "The provided code snippet is an HTML form with a select input for 'ville'. However, the vulnerability likely lies in the backend PHP script that handles this form submission. Assuming the PHP code directly injects the 'ville' value into a SQL query without proper sanitization, an attacker can exploit this by submitting a payload like '<payload>' OR '1'='1' --</payload>' in the 'ville' field. This would alter the SQL query to always return true, potentially allowing unauthorized access or data extraction.",
+      "solution": "Use a PDO Prepared Statement to separate the SQL logic from the user input.",
+      "code_vulnerable": "<?php\n$ville = $_POST['ville'];\n$query = \"SELECT * FROM cities WHERE name = '$ville'\";\n$result = mysqli_query($conn, $query);\nwhile($row = mysqli_fetch_assoc($result)) {\n    echo $row['name'];\n}\n?>",
+      "code_corrige": "<?php\n$ville = $_POST['ville'];\n$query = \"SELECT * FROM cities WHERE name = :ville\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':ville', $ville);\n$stmt->execute();\nwhile($row = $stmt->fetch()) {\n    echo $row['name'];\n}\n?>",
       "status": "success"
     },
     {
@@ -101,8 +101,8 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "profession",
-      "explication": "The provided HTML code snippet represents a form input field named 'profession'. When submitted, this input is likely processed by a backend PHP script that constructs a SQL query using the user's input. If the backend script directly injects the 'profession' value into a SQL query without proper sanitization or parameterization, an attacker can exploit this vulnerability by injecting malicious SQL code. The payload '<payload>' OR '1'='1' --</payload>' can trick the SQL query into always returning true, potentially allowing unauthorized access to the database or extracting sensitive data.",
-      "solution": "Use PDO Prepared Statements to separate code from user input data.",
+      "explication": "The provided HTML code snippet represents a form input field named 'profession'. When submitted, the input data is sent to the server via the POST method. The vulnerability likely occurs in the server-side PHP script that handles this form submission. An attacker exploited this vulnerability by injecting a malicious SQL payload: '<payload>' OR '1'='1' --</payload>'. This payload suggests that the PHP script directly injects user input into a SQL query without proper sanitization, allowing an attacker to manipulate the query. Specifically, the injected payload attempts to always return true ('OR '1'='1'') and comment out the rest of the query (--), which indicates a SQL injection vulnerability.",
+      "solution": "Use PDO Prepared Statements to separate code from user input.",
       "code_vulnerable": "<?php\n$profession = $_POST['profession'];\n$query = \"SELECT * FROM users WHERE profession = '$profession'\";\n$result = mysqli_query($conn, $query);\n?>",
       "code_corrige": "<?php\n$profession = $_POST['profession'];\n$query = \"SELECT * FROM users WHERE profession = :profession\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':profession', $profession);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
@@ -114,10 +114,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "revenu",
-      "explication": "The provided HTML code snippet is a form input for 'revenu'. When submitted, it is likely processed by a backend PHP script that uses the 'revenu' value in a SQL query without proper sanitization. An attacker can exploit this by injecting malicious SQL syntax, as evidenced by the payload '<payload>' OR '1'='1' --</payload>'. This payload tricks the SQL query into always evaluating to true, potentially allowing unauthorized access or data disclosure. The error message 'you have an error in your sql syntax' indicates that the SQL query is being executed and the syntax injected is being interpreted.",
-      "solution": "Use a PDO Prepared Statement to separate the SQL logic from the user input, ensuring the input is treated as a parameter rather than part of the SQL code.",
-      "code_vulnerable": "<?php\n$pdo = new PDO('mysql:host=localhost;dbname=yourdb', 'username', 'password');\nif (isset($_POST['revenu'])) {\n    $revenu = $_POST['revenu'];\n    $sql = 'SELECT * FROM yourtable WHERE revenu = ' . $revenu;\n    $result = $pdo->query($sql);\n}\n?>",
-      "code_corrige": "<?php\n$pdo = new PDO('mysql:host=localhost;dbname=yourdb', 'username', 'password');\nif (isset($_POST['revenu'])) {\n    $revenu = $_POST['revenu'];\n    $sql = 'SELECT * FROM yourtable WHERE revenu = :revenu';\n    $stmt = $pdo->prepare($sql);\n    $stmt->bindParam(':revenu', $revenu, PDO::PARAM_INT);\n    $stmt->execute();\n    $result = $stmt->fetchAll();\n}\n?>",
+      "explication": "The provided HTML code snippet is a form input for 'revenu'. When submitted, it is likely processed by a PHP backend script that uses the 'revenu' value in a SQL query without proper sanitization. An attacker can exploit this by injecting malicious SQL syntax, as evidenced by the payload '<payload>' OR '1'='1' --</payload>'. This payload tricks the SQL query into always evaluating to true, potentially allowing unauthorized access or data leakage.",
+      "solution": "Use a PDO Prepared Statement to separate code from user input.",
+      "code_vulnerable": "<?php\n$revenu = $_POST['revenu'];\n$query = \"SELECT * FROM table WHERE revenu = '$revenu'\";\n$result = mysqli_query($conn, $query);\n?>",
+      "code_corrige": "<?php\n$revenu = $_POST['revenu'];\n$stmt = $pdo->prepare(\"SELECT * FROM table WHERE revenu = :revenu\");\n$stmt->bindParam(':revenu', $revenu, PDO::PARAM_INT);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
     },
     {
@@ -127,10 +127,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "type_compte",
-      "explication": "The provided HTML code is a form with a select input for 'type_compte'. However, the vulnerability likely lies in the backend PHP script that handles this form submission. When the form is submitted, the 'type_compte' value is likely directly inserted into a SQL query without proper sanitization, allowing an attacker to inject malicious SQL code. For example, if the backend code uses a query like 'SELECT * FROM comptes WHERE type = '$type_compte'', an attacker can submit ' OR '1'='1' -- as the 'type_compte' value, causing the query to become 'SELECT * FROM comptes WHERE type = '' OR '1'='1' --'', which will always return true and potentially allow unauthorized access to account information.",
-      "solution": "Use a PDO Prepared Statement to separate the SQL code from the user input data.",
-      "code_vulnerable": "<?php\n$type_compte = $_POST['type_compte'];\n$query = \"SELECT * FROM comptes WHERE type = '$type_compte'\";\n$result = mysqli_query($conn, $query);\nwhile($row = mysqli_fetch_assoc($result)) {\n    echo $row['account_info'];\n}\n?>",
-      "code_corrige": "<?php\n$type_compte = $_POST['type_compte'];\n$query = \"SELECT * FROM comptes WHERE type = :type_compte\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':type_compte', $type_compte);\n$stmt->execute();\nwhile($row = $stmt->fetch()) {\n    echo $row['account_info'];\n}\n?>",
+      "explication": "The provided HTML code is a form with a select input for 'type_compte'. However, the vulnerability likely lies in the backend PHP script that handles this form submission. An attacker can inject malicious SQL by entering a payload like '<payload>' OR '1'='1' --</payload>' in the 'type_compte' field. This would be executed in the SQL query, potentially allowing the attacker to bypass authentication or extract sensitive data. The error message 'you have an error in your sql syntax' indicates that the SQL query is being directly executed with user input, without proper sanitization or parameterization.",
+      "solution": "Use a PDO Prepared Statement to parameterize the SQL query and prevent user input from being executed as SQL code.",
+      "code_vulnerable": "<?php\n$type_compte = $_POST['type_compte'];\n$query = \"SELECT * FROM comptes WHERE type = '$type_compte'\";\n$result = mysqli_query($conn, $query);\nwhile ($row = mysqli_fetch_assoc($result)) {\n    echo $row['nom_compte'];\n}\n?>",
+      "code_corrige": "<?php\n$type_compte = $_POST['type_compte'];\n$query = \"SELECT * FROM comptes WHERE type = :type_compte\";\n$stmt = $pdo->prepare($query);\n$stmt->bindParam(':type_compte', $type_compte);\n$stmt->execute();\nwhile ($row = $stmt->fetch()) {\n    echo $row['nom_compte'];\n}\n?>",
       "status": "success"
     },
     {
@@ -140,10 +140,10 @@
       "fichier": "",
       "url": "http://localhost/vulnerable_site/",
       "champ": "message",
-      "explication": "The provided code snippet is an HTML textarea used to collect user input. However, it is likely that this input is processed by a PHP backend script (not shown) that stores or processes the message in a database. The vulnerability arises because the user input from the textarea is not properly sanitized or parameterized when used in a SQL query. An attacker can inject malicious SQL by entering specific input, such as the provided payload: ' OR '1'='1' --. This payload can trick the SQL query into always returning true, potentially allowing unauthorized access or data disclosure.",
-      "solution": "Use PDO Prepared Statements to parameterize the user input and prevent it from being interpreted as part of the SQL code.",
-      "code_vulnerable": "<?php\n$message = $_POST['message'];\n$query = \"SELECT * FROM messages WHERE message = '$message'\";\n$result = mysqli_query($conn, $query);\n?>",
-      "code_corrige": "<?php\n$message = $_POST['message'];\n$stmt = $pdo->prepare(\"SELECT * FROM messages WHERE message = :message\");\n$stmt->bindParam(':message', $message);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
+      "explication": "The provided HTML code snippet is a form with a textarea named 'message'. When submitted, the content of this textarea is likely sent to a PHP backend script via the POST method. If the backend script uses the $_POST['message'] value directly in a SQL query without proper sanitization, an attacker can inject malicious SQL code. In this case, the payload '<payload>' OR '1'='1' --</payload>' can be used to bypass authentication or extract unauthorized data. For example, if the original SQL query is 'SELECT * FROM messages WHERE content = '$message'', an attacker can make it always return true by injecting ' OR '1'='1' -- which makes the query 'SELECT * FROM messages WHERE content = '' OR '1'='1' --''",
+      "solution": "Use a PDO Prepared Statement to separate the SQL code from the user input data",
+      "code_vulnerable": "<?php\n$message = $_POST['message'];\n$query = \"SELECT * FROM messages WHERE content = '$message'\";\nmysql_query($query);\n?>",
+      "code_corrige": "<?php\n$message = $_POST['message'];\n$stmt = $pdo->prepare(\"SELECT * FROM messages WHERE content = :message\");\n$stmt->bindParam(':message', $message);\n$stmt->execute();\n$result = $stmt->fetchAll();\n?>",
       "status": "success"
     }
   ]

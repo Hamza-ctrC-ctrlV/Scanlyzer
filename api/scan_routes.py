@@ -15,7 +15,7 @@ from scanner.exporter import build_vulnerabilities_report
 from ai_engine.patch_generator import PatchGenerator
 from ai_engine.ai_client import get_ai_client
 from config.constants import SCAN_ROUTE_RATE_LIMIT
-from utils.helpers import standardize_error_response
+from utils.helpers import standardize_error_response, compute_scan_stats
 from utils.state import set_scan_progress, get_scan_progress, set_scan_result, get_scan_result as get_state_scan_result
 from utils.security import is_safe_url
 from api.auth import require_auth, require_api_key
@@ -173,6 +173,17 @@ def _background_scan_task(scan_id: str, target: str, data: dict, user_info: dict
         if patches_report:
             patches_report["scan_duration_total"] = total_duration
 
+        # Compute security score and stats from vulnerabilities (has confirmed field)
+        score = 0
+        stats = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
+        patches_count = 0
+        
+        if vulnerabilities_report and "vulnerabilities" in vulnerabilities_report:
+            score, stats, patches_count = compute_scan_stats(vulnerabilities_report["vulnerabilities"])
+        elif patches_report and "patches" in patches_report:
+            # Fallback to patches if vulnerabilities not available
+            score, stats, patches_count = compute_scan_stats(patches_report["patches"])
+
         # Store final results
         set_scan_result(scan_id, user_id, {
             "success": True,
@@ -180,6 +191,9 @@ def _background_scan_task(scan_id: str, target: str, data: dict, user_info: dict
             "vulnerabilities_report": vulnerabilities_report,
             "patches_report": patches_report,
             "scan_duration_total": total_duration,
+            "score": score,
+            "stats": stats,
+            "patches_count": patches_count,
         })
         
         set_scan_progress(scan_id, user_id, {"step": "done", "pct": 100, "msg": "Scan terminé !", "elapsed": total_duration})

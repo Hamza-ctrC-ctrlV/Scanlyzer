@@ -14,36 +14,41 @@ from typing import Any, Dict, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
-SEVERITY_SCORE_MAP = {
-    "CRITICAL": 25,
-    "HIGH": 15,
-    "MEDIUM": 8,
-    "LOW": 3,
-    "INFO": 1,
-}
-
 EMPTY_STATS = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
 
 def compute_scan_stats(patches: list) -> tuple:
-    """Compute score, stats, and count from a list of patch dicts.
+    """Compute score based on CONFIRMED vulnerabilities.
+    
+    Score = (confirmed_vulnerabilities / total_vulnerabilities) * 100
+    - 100 = all confirmed (bad)
+    - 0 = none confirmed (good)
+    
     Returns:
         (score, stats, patches_count)
     """
     stats = dict(EMPTY_STATS)
-    total_points = 0
     count = 0
+    confirmed_count = 0
 
     for p in patches:
         if not isinstance(p, dict):
             continue
         count += 1
         sev = (p.get("severity") or "").upper()
-        total_points += SEVERITY_SCORE_MAP.get(sev, 0)
         if sev in stats:
             stats[sev] += 1
+        
+        # Count only confirmed vulnerabilities
+        if p.get("confirmed") is True:
+            confirmed_count += 1
 
-    score = max(0, 100 - total_points)
-    return score, stats, count
+    # Score = percentage of confirmed vulnerabilities
+    if count == 0:
+        score = 0  # No vulnerabilities = good
+    else:
+        score = (confirmed_count / count) * 100
+    
+    return int(round(score)), stats, count
 
 
 def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
@@ -346,7 +351,8 @@ def _build_scan_summary_light(scan_row: dict) -> dict:
     base = _build_scan_base(scan_row)
     patches_count = scan_row.get("patches_count", 0)
 
-    score = max(0, 100 - (patches_count * 3))  # Fallback estimate
+    # Fallback: assume low confirmation rate without full data
+    score = 0
     stats = dict(EMPTY_STATS)
     scan_duration_total = None
 
