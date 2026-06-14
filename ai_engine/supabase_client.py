@@ -164,16 +164,18 @@ def save_scan(user_id: str, target_url: str, vulnerabilities_count: int,
         final_vul_path = file_path_vulnerabilities
         final_patch_path = file_path_patches
 
-        # Compute score and stats if patches_report is provided
+        # Compute score and stats if vulnerabilities_report is provided
         query_suffix = ""
-        if patches_report and isinstance(patches_report, dict):
-            patches = patches_report.get("patches", [])
-            if patches:
+        if vulnerabilities_report and isinstance(vulnerabilities_report, dict):
+            vulnerabilities = vulnerabilities_report.get("vulnerabilities", [])
+            if vulnerabilities:
                 from utils.helpers import compute_scan_stats
-                score, stats, _ = compute_scan_stats(patches)
+                score, stats, _ = compute_scan_stats(vulnerabilities)
                 import urllib.parse
                 encoded_stats = urllib.parse.quote(json.dumps(stats))
-                duration = patches_report.get("scan_duration_total", 0)
+                duration = vulnerabilities_report.get("scan_duration_total", 0)
+                if patches_report and isinstance(patches_report, dict):
+                    duration = patches_report.get("scan_duration_total", duration)
                 query_suffix = f"?score={score}&stats={encoded_stats}&duration={duration}"
 
         try:

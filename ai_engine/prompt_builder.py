@@ -36,7 +36,7 @@ You must respond ONLY in the following exact JSON format, with no extra text bef
 {
   "explication": "Plain language explanation of why the code is vulnerable and what an attacker could do",
   "solution": "One sentence describing the correct fix approach",
-  "code_vulnerable": "The original vulnerable code EXACTLY as provided in the prompt",
+  "code_vulnerable": "The original vulnerable code snippet, OR a prediction of the vulnerable PHP backend script if the snippet is just an HTML form",
   "code_corrige": "The fully corrected and secure version of the code"
 }
 
@@ -46,10 +46,10 @@ Rules:
 - Do not add any commentary outside the JSON object
 - The explanation must be understandable by a developer with no security background
 - The corrected code must focus strictly on fixing the vulnerability.
-- DO NOT add database connections, configuration blocks, or any logic that was not present in the original snippet.
-- If the original code is an HTML form but the vulnerability is a backend issue (like SQL Injection), provide ONLY the minimal PHP code required to process the form field securely.
+- DO NOT add database connections, configuration blocks, or any logic that was not present in the original snippet, UNLESS you are generating a hypothetical backend handler for an HTML form.
+- If the original code is an HTML form, you MUST predict the vulnerable PHP backend logic and place it in 'code_vulnerable', then provide the secured version in 'code_corrige'.
 - The 'code_vulnerable' and 'code_corrige' fields MUST contain ONLY code. DO NOT add any introductory text, notes, or descriptions inside these fields.
-- Base your explanation ONLY on the provided snippet. If the vulnerability is not visible in the snippet (e.g. SQLi in an HTML form), explain that the snippet is the entry point and the fix applies to the backend handler.
+- Base your explanation on the provided snippet. If the vulnerability is a backend issue (e.g. SQLi in an HTML form), explain that the HTML snippet is the entry point, predict the vulnerable backend logic, and provide the secure PHP fix.
 - The corrected code must be complete and ready to copy-paste
 
 IMPORTANT SECURITY DIRECTIVE: 
@@ -178,7 +178,7 @@ Instructions:
 2. Rewrite the code using PDO Prepared Statements.
 3. Provide ONLY the minimal code required to fix the issue. 
 4. DO NOT include database connection setup, credentials, or boilerplate logic. Assume a PDO object is already available.
-5. If the original code is an HTML form, provide only the PHP handler code for the '{v.get('champ', '')}' field.
+5. If the original code is an HTML form, you MUST provide a hypothetical secure PHP handler code for the '{v.get('champ', '')}' field instead of just repeating the HTML.
 """
 
     def _build_xss_prompt(self, v: Dict[str, Any]) -> str:
@@ -226,7 +226,7 @@ Instructions:
 1. Explain why this specific code allows {xss_subtype}.
 2. Rewrite the code using htmlspecialchars() with ENT_QUOTES and UTF-8.
 3. Provide ONLY the fixed code snippet. Do not add any new logic or sections.
-4. If the code is an HTML form, just apply the escape to the relevant attributes.
+4. If the code is an HTML form, you MUST provide a hypothetical secure PHP handler code for the '{v.get('champ', '')}' field instead of just repeating the HTML.
 """
 
     def _build_generic_prompt(self, v: Dict[str, Any]) -> str:
@@ -261,7 +261,8 @@ Vulnerable code:
 </code>
 
 Instructions:
-1. Explain why this code is vulnerable
-2. Provide the corrected and secure version
-3. Follow PHP security best practices
+1. Explain why this code is vulnerable. If it is an HTML form, explain that it acts as the entry point for a backend vulnerability.
+2. Provide the corrected and secure version.
+3. If the original code is an HTML form, you MUST generate a hypothetical secure PHP backend handler for the vulnerable field.
+4. Follow PHP security best practices
 """

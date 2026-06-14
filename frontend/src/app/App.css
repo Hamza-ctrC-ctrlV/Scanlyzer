@@ -1434,4 +1434,14 @@ body[data-theme="light"] .clean-scan-tip {
   background: rgba(6,214,160,0.05);
   border-color: rgba(6,214,160,0.15);
   color: #0d1526;
-}
+}
+
+/* Light mode overrides for History Page */
+body[data-theme="light"] .hist-card-url,
+body[data-theme="light"] .fb-title {
+  color: #0d1526;
+}
+body[data-theme="light"] .hist-card-score .hist-score-num {
+  filter: none;
+}
+

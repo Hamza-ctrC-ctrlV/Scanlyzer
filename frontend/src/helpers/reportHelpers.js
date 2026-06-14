@@ -60,11 +60,14 @@ export function normalizeReport(apiData, url) {
   const vulnerabilitiesReport = apiData.vulnerabilities_report || {};
   const patchesReport = apiData.patches_report || {};
   const patches = patchesReport.patches || apiData.patches || [];
+  const vulnerabilities = vulnerabilitiesReport.vulnerabilities || apiData.vulnerabilities || [];
   
   const scanId = vulnerabilitiesReport.scan_id || patchesReport.scan_id || apiData.scan_id || `scan-${Date.now()}`;
   const generatedAt = patchesReport.generated_at || vulnerabilitiesReport.scan_date || apiData.generated_at || new Date().toISOString();
-  const score = computeScore(patches);
-  const stats = computeStats(patches);
+  
+  const itemsForStats = vulnerabilities.length > 0 ? vulnerabilities : patches;
+  const score = computeScore(itemsForStats);
+  const stats = computeStats(itemsForStats);
   
   return {
     scan_id: scanId,

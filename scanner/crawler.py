@@ -246,7 +246,7 @@ def scan_forms(
                     "severity":     "",
                     "payload":      payload,
                     "champ":        "",
-                    "code_vulnerable": str(form),
+                    "code_vulnerable": str(tag),
                 })
 
             results.append({
