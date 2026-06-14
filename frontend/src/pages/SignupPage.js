@@ -13,7 +13,7 @@ export function SignupPage({ onSignup, onSwitchToLogin, loading = false, error =
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <div className="auth-badge">Supabase Auth</div>
+        <div className="auth-badge">Scanlyzer Portal</div>
         <h1 className="auth-title">Inscription</h1>
         <p className="auth-subtitle">Créez un compte pour sauvegarder vos scans et historiques.</p>
 

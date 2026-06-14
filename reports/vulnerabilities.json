@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan_20260517_203859",
+  "scan_id": "scan_20260614_151010",
   "target_url": "https://herbal-obstacle-greyhound.ngrok-free.dev/",
-  "scan_date": "2026-05-17T20:38:59.022572",
-  "scan_duration_seconds": 11.39,
+  "scan_date": "2026-06-14T15:10:10.905667",
+  "scan_duration_seconds": 12.48,
   "pages_crawled": 2,
   "forms_found": 2,
   "total_vulnerabilities": 3,

@@ -65,9 +65,11 @@ CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
 try:
     from api.routes import api_bp, limiter as api_limiter
     from api.auth import auth_bp
+    from api.verify_routes import verify_bp
 
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(auth_bp)
+    app.register_blueprint(verify_bp)
 
     # Attach the per-blueprint limiter to the Flask app
     api_limiter.init_app(app)

@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Scanlyzer",
+  "name": "Scanlyzer — Vulnerability Scanner",
   "icons": [
     {
       "src": "favicon.ico",

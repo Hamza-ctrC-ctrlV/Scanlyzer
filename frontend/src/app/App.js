@@ -5,6 +5,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { HistoryPage } from "../pages/HistoryPage";
 import { LoginPage } from "../pages/LoginPage";
 import { SignupPage } from "../pages/SignupPage";
+import { VerifyPage } from "../pages/VerifyPage";
 import { HEALTH_URL } from "../config/constants";
 
 /**
@@ -212,6 +213,14 @@ export default function App() {
       <div className="aurora" />
       <div className="mesh-grid" />
 
+      {!authUser && (
+        <div className="auth-theme-toggle">
+          <button className="theme-toggle" onClick={toggleTheme}>
+            {theme === "light" ? "🌙 Sombre" : "☀️ Clair"}
+          </button>
+        </div>
+      )}
+
       {page === "login" && (
         <LoginPage
           onLogin={handleLogin}
@@ -230,7 +239,7 @@ export default function App() {
         />
       )}
 
-      {(page === "dashboard" || page === "history") && authUser && (
+      {(page === "dashboard" || page === "history" || page === "verify") && authUser && (
         <>
           {page === "dashboard" && <div className="scanline" />}
           <Header page={page} setPage={setPage} onLogout={handleLogout} userEmail={authUser.email} theme={theme} toggleTheme={toggleTheme} />
@@ -244,6 +253,10 @@ export default function App() {
               authUser={authUser}
               onBack={() => setPage("dashboard")}
             />
+          )}
+
+          {page === "verify" && (
+            <VerifyPage authUser={authUser} />
           )}
         </>
       )}

@@ -38,7 +38,7 @@ export function generatePDF(scan) {
     doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
     doc.line(MARGIN, 284, W - MARGIN, 284);
     doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    doc.text("SecureScan AI — Rapport confidentiel d'analyse de sécurité", MARGIN, 290);
+    doc.text("Scanlyzer AI — Rapport confidentiel d'analyse de sécurité", MARGIN, 290);
     doc.text(new Date().toLocaleDateString("fr-FR"), W - MARGIN, 290, { align: "right" });
     return 20;
   };
@@ -88,7 +88,7 @@ export function generatePDF(scan) {
   doc.setFontSize(22); doc.setFont("helvetica","bold"); doc.setTextColor(20,20,20);
   doc.text("Rapport d'Analyse de Sécurité Web", MARGIN, y + 12);
   doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,100);
-  doc.text("Généré automatiquement par SecureScan AI", MARGIN, y + 20);
+  doc.text("Généré automatiquement par Scanlyzer AI", MARGIN, y + 20);
   doc.setDrawColor(26,60,140); doc.setLineWidth(1);
   doc.line(MARGIN, y + 26, W - MARGIN, y + 26);
   y += 34;
@@ -208,5 +208,5 @@ export function generatePDF(scan) {
   });
 
   const site = (scan.url||"scan").replace(/https?:\/\//,"").replace(/[^a-zA-Z0-9]/g,"_").slice(0,30);
-  doc.save(`SecureScan_${site}_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`Scanlyzer_${site}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
