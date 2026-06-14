@@ -29,7 +29,7 @@ export function ProgressBar({ progress, stepIdx, statusMsg, elapsed }) {
         </div>
       </div>
       <div className="prog-pct">
-        <span>{progress}% — {statusMsg || "Analyse en cours..."}</span>
+        <span>{progress}% — {statusMsg || "Scanning in progress..."}</span>
         {elapsed > 0 && <span className="prog-elapsed">{elapsed}s</span>}
       </div>
     </div>

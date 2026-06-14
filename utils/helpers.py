@@ -8,6 +8,7 @@ to reduce code duplication and enforce consistent patterns.
 import json
 import re
 import logging
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Any, Dict, Tuple, Optional
 
@@ -269,3 +270,146 @@ def safe_get(obj: Dict[str, Any], path: str, default: Any = None) -> Any:
             return default
     
     return current
+
+
+def extract_domain(raw: str) -> str:
+    """
+    Takes any input the user might paste — full URL, bare domain,
+    with or without www — and returns a clean lowercase domain.
+
+    Examples:
+        "https://www.example.com/products"  →  "example.com"
+        "http://blog.example.com"           →  "blog.example.com"
+        "example.com"                       →  "example.com"
+        "  EXAMPLE.COM  "                   →  "example.com"
+    """
+    raw = raw.strip()
+
+    if not raw.startswith("http"):
+        raw = "https://" + raw
+
+    parsed = urlparse(raw)
+    host = parsed.netloc
+
+    # Strip www. from the start but leave other subdomains intact
+    host = re.sub(r"^www\.", "", host)
+
+    return host.lower()
+
+
+# ======================================================================
+# Scan Summary Builders
+# ======================================================================
+
+def _parse_report_value(raw_value: Any) -> Any:
+    """Parse a stored report from dict, JSON string, or storage URL/path."""
+    if not raw_value:
+        return None
+
+    if isinstance(raw_value, (dict, list)):
+        return raw_value
+
+    try:
+        return json.loads(raw_value)
+    except Exception:
+        try:
+            from ai_engine.supabase_client import download_report_from_storage
+
+            dl = download_report_from_storage(raw_value)
+            if dl.get("success"):
+                return dl.get("data")
+        except Exception as exc:
+            logger.warning(f"Could not download report from storage: {exc}")
+        return None
+
+
+def _build_scan_base(scan_row: dict) -> dict:
+    """Build the base fields shared by both list and detail scan summaries."""
+    target_url = scan_row.get("target_url") or scan_row.get("url") or ""
+    generated_at = scan_row.get("scan_date") or scan_row.get("created_at")
+
+    return {
+        "scan_id": scan_row.get("scan_id"),
+        "url": target_url,
+        "target_url": target_url,
+        "generated_at": generated_at,
+    }
+
+
+def _build_scan_summary_light(scan_row: dict) -> dict:
+    """Build a scan summary for list views.
+
+    Parses score and stats from query parameters stored in file_path_patches.
+    Falls back to estimates if not found.
+    """
+    from urllib.parse import parse_qs
+    base = _build_scan_base(scan_row)
+    patches_count = scan_row.get("patches_count", 0)
+
+    score = max(0, 100 - (patches_count * 3))  # Fallback estimate
+    stats = dict(EMPTY_STATS)
+    scan_duration_total = None
+
+    try:
+        file_path_patches = scan_row.get("file_path_patches", "")
+        
+        # If the file path is actually a raw JSON string (fallback mechanism)
+        if file_path_patches.startswith("{"):
+            patches_report = json.loads(file_path_patches)
+            scan_duration_total = patches_report.get("scan_duration_total")
+            patches = patches_report.get("patches", [])
+            if patches:
+                score, stats, patches_count = compute_scan_stats(patches)
+                
+        # If the file path contains query parameters (new mechanism)
+        elif "?" in file_path_patches:
+            path_part, query_part = file_path_patches.split("?", 1)
+            qs = parse_qs(query_part)
+            if "score" in qs:
+                score = int(qs.get("score")[0])
+            if "stats" in qs:
+                stats = json.loads(qs.get("stats")[0])
+            if "duration" in qs:
+                scan_duration_total = float(qs.get("duration")[0])
+    except Exception as e:
+        logger.error(f"Error extracting metadata from file_path_patches: {e}")
+
+    return {
+        **base,
+        "score": score,
+        "stats": stats,
+        "total_patches": patches_count,
+        "vulnerabilities_count": scan_row.get("vulnerabilities_count", 0),
+        "patches_count": patches_count,
+        "scan_duration_total": scan_duration_total,
+    }
+
+
+def _build_scan_summary(scan_row: dict) -> dict:
+    """Build a frontend-friendly scan summary from a database row with full reports.
+
+    This downloads full reports from storage - only use for detail views.
+    """
+    base = _build_scan_base(scan_row)
+
+    vulnerabilities_report = _parse_report_value(scan_row.get("file_path_vulnerabilities")) or {}
+    patches_report = _parse_report_value(scan_row.get("file_path_patches")) or {}
+    patches = patches_report.get("patches", []) if isinstance(patches_report, dict) else []
+
+    score, stats, _ = compute_scan_stats(patches)
+
+    return {
+        **base,
+        "score": score,
+        "stats": stats,
+        "total_patches": scan_row.get("patches_count", len(patches)),
+        "vulnerabilities_count": scan_row.get(
+            "vulnerabilities_count",
+            len((vulnerabilities_report or {}).get("vulnerabilities", [])),
+        ),
+        "patches_count": scan_row.get("patches_count", len(patches)),
+        "vulnerabilities_report": vulnerabilities_report,
+        "patches_report": patches_report,
+        "patches": patches,
+        "vulnerabilities": (vulnerabilities_report or {}).get("vulnerabilities", []),
+    }

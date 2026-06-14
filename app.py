@@ -63,16 +63,19 @@ CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
 # Register API blueprints
 # ------------------------------------------------------------------
 try:
-    from api.routes import api_bp, limiter as api_limiter
+    from api.scan_routes import scan_bp, scan_limiter
+    from api.report_routes import report_bp, report_limiter
     from api.auth import auth_bp
     from api.verify_routes import verify_bp
 
-    app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(scan_bp, url_prefix="/api")
+    app.register_blueprint(report_bp, url_prefix="/api")
     app.register_blueprint(auth_bp)
     app.register_blueprint(verify_bp)
 
     # Attach the per-blueprint limiter to the Flask app
-    api_limiter.init_app(app)
+    scan_limiter.init_app(app)
+    report_limiter.init_app(app)
 
     logger.info("API blueprints registered successfully")
 except Exception as e:

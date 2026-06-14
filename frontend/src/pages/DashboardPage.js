@@ -6,10 +6,7 @@ import { generatePDF } from "../helpers/pdfHelper";
 import { ScanInput } from "../components/ScanInput";
 import { ProgressBar } from "../components/ProgressBar";
 import { MetricsSkeleton, VulnCardSkeleton } from "../components/Skeleton";
-import ReportMetrics from "../components/ReportMetrics";
-import ReportCharts from "../components/ReportCharts";
-import VulnerabilityList from "../components/VulnerabilityList";
-import FixesList from "../components/FixesList";
+import ReportViewer from "../components/ReportViewer";
 import { API_URL, SCAN_RESULT_URL, SAVE_SCAN_URL, API_BASE_URL, STEP_MAP } from "../config/constants";
 
 /**
@@ -64,7 +61,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
       const resultData = await res.json();
 
       if (!res.ok || !resultData.success) {
-        setApiError(resultData.error || resultData.message || "Erreur lors de la récupération du rapport.");
+        setApiError(resultData.error || resultData.message || "Error retrieving the report.");
         return;
       }
 
@@ -109,7 +106,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
       }
     } catch (err) {
       console.error("fetchScanResult error:", err);
-      setApiError(`Impossible de récupérer les résultats — ${err.message || "erreur inconnue"}`);
+      setApiError(`Unable to fetch results — ${err.message || "unknown error"}`);
     } finally {
       setScanning(false);
       setShowSkeleton(false);
@@ -130,7 +127,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
         const data = JSON.parse(event.data);
         setProgress(data.pct ?? 0);
         setStepIdx(STEP_MAP[data.step] ?? 0);
-        setStatusMsg(data.msg || "Analyse en cours...");
+        setStatusMsg(data.msg || "Scanning in progress...");
         setElapsed(data.elapsed || 0);
 
         if (data.step === "done") {
@@ -138,7 +135,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
           fetchScanResult(scanId, token);
         } else if (data.step === "error") {
           es.close();
-          setApiError(data.msg || "Une erreur est survenue pendant le scan.");
+          setApiError(data.msg || "An error occurred during the scan.");
           setScanning(false);
           setShowSkeleton(false);
           setScanId(null);
@@ -182,7 +179,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
       const data = await res.json();
 
       if (!res.ok) {
-        setApiError(data.error || data.message || "Erreur lors du lancement du scan.");
+        setApiError(data.error || data.message || "Error launching the scan.");
         setScanning(false);
         setShowSkeleton(false);
         return;
@@ -193,7 +190,7 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
 
     } catch (err) {
       console.error("Scan fetch error:", err);
-      setApiError(`Impossible de contacter Flask — vérifiez que le serveur répond (${err.message || "erreur inconnue"})`);
+      setApiError(`Unable to contact server — check if it is responding (${err.message || "unknown error"})`);
       setScanning(false);
       setShowSkeleton(false);
     }
@@ -247,65 +244,14 @@ export function DashboardPage({ authUser, onReportLoad, initialReport = null }) 
               </linearGradient></defs>
             </svg>
           </div>
-          <div className="empty-title">EN ATTENTE DE SCAN</div>
+          <div className="empty-title">WAITING FOR SCAN</div>
           <p className="empty-sub">
-            Entrez une URL valide ci-dessus et lancez l'analyse pour voir le rapport complet.
+            Enter a valid URL above and launch the analysis to see the full report.
           </p>
         </div>
       )}
 
-      {report && (
-        <section className="report fade-in">
-          <div className="report-topbar">
-            <div>
-              <div className="rtb-lbl">URL analysée · {report.scan_id}</div>
-              <div className="rtb-url">{report.url}</div>
-            </div>
-            <div className="rtb-right">
-              <div className="rtb-lbl">Généré le</div>
-              <div className="rtb-time">
-                {report.generated_at
-                  ? new Date(report.generated_at).toLocaleString("fr-FR")
-                  : new Date().toLocaleString("fr-FR")}
-              </div>
-              {report.scan_duration_total && (
-                <div className="rtb-duration">⏱ {report.scan_duration_total}s (total)</div>
-              )}
-            </div>
-          </div>
-
-          <ReportMetrics report={report} scoreColor={scoreColor} scoreVerdict={scoreVerdict} />
-          <ReportCharts report={report} />
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <div className="tabs" style={{ marginBottom: 0 }}>
-              <button className={`tab-btn ${tab==="vulns"?"active":""}`} onClick={()=>setTab("vulns")}>
-                <IconBug/> Vulnérabilités ({report.total_patches})
-              </button>
-              <button className={`tab-btn ${tab==="fixes"?"active":""}`} onClick={()=>setTab("fixes")}>
-                <IconCode/> Correctifs IA
-              </button>
-            </div>
-            <button
-              className="btn-outline"
-              onClick={() => generatePDF(report)}
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-              Exporter PDF
-            </button>
-          </div>
-
-          {tab==="vulns" && <VulnerabilityList patches={report.patches} />}
-          {tab==="fixes" && <FixesList patches={report.patches} />}
-        </section>
-      )}
+      {report && <ReportViewer report={report} />}
     </main>
   );
 }

@@ -23,7 +23,7 @@ function FixesList({ patches }) {
             {p.code_corrige
               ? <CodeBlock code={p.code_corrige} filename={p.fichier} type="fixed" />
               : <div style={{padding:"16px 20px",color:"var(--muted)",fontSize:"0.82rem"}}>
-                  {p.solution||"Voir la description de la vulnérabilité."}
+                  {p.solution||"See vulnerability description."}
                 </div>
             }
           </div>

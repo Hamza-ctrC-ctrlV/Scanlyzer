@@ -14,8 +14,8 @@ export function SignupPage({ onSignup, onSwitchToLogin, loading = false, error =
     <main className="auth-shell">
       <section className="auth-card">
         <div className="auth-badge">Scanlyzer Portal</div>
-        <h1 className="auth-title">Inscription</h1>
-        <p className="auth-subtitle">Créez un compte pour sauvegarder vos scans et historiques.</p>
+        <h1 className="auth-title">Sign Up</h1>
+        <p className="auth-subtitle">Create an account to save your scans and history.</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
@@ -24,13 +24,13 @@ export function SignupPage({ onSignup, onSwitchToLogin, loading = false, error =
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="vous@exemple.com"
+              placeholder="you@example.com"
               autoComplete="email"
             />
           </label>
 
           <label className="auth-field">
-            <span>Mot de passe</span>
+            <span>Password</span>
             <input
               type="password"
               value={password}
@@ -41,7 +41,7 @@ export function SignupPage({ onSignup, onSwitchToLogin, loading = false, error =
           </label>
 
           <label className="auth-field">
-            <span>Confirmer le mot de passe</span>
+            <span>Confirm Password</span>
             <input
               type="password"
               value={confirmPassword}
@@ -54,12 +54,12 @@ export function SignupPage({ onSignup, onSwitchToLogin, loading = false, error =
           {error && <div className="auth-error">{error}</div>}
 
           <button className="auth-btn" type="submit" disabled={loading}>
-            {loading ? "Création..." : "Créer le compte"}
+            {loading ? "Creating..." : "Create account"}
           </button>
         </form>
 
         <button className="auth-link" type="button" onClick={onSwitchToLogin}>
-          J’ai déjà un compte
+          I already have an account
         </button>
       </section>
     </main>

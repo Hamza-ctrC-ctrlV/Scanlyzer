@@ -6,13 +6,13 @@ import React from "react";
 export function ScanInput({ url, onUrlChange, onScan, urlError, apiError, scanning }) {
   return (
     <section className="hero">
-      <div className="hero-eyebrow">Outil d'audit de sécurité web · Powered by AI</div>
+      <div className="hero-eyebrow">Web Security Audit Tool · Powered by AI</div>
       <h1 className="hero-title">
-        ANALYSE DE<span className="hl"> VULNÉRABILITÉS</span><br/>AUTOMATISÉE
+        AUTOMATED<span className="hl"> VULNERABILITY</span><br/>SCANNING
       </h1>
       <p className="hero-sub">
-        Entrez l'URL de votre site cible. Le scanner détecte les vulnérabilités
-        et l'IA génère les correctifs en temps réel.
+        Enter your target URL. The scanner detects vulnerabilities
+        and AI generates fixes in real time.
       </p>
 
       {/* URL INPUT */}
@@ -28,7 +28,7 @@ export function ScanInput({ url, onUrlChange, onScan, urlError, apiError, scanni
           disabled={scanning}
         />
         <button className={`scan-btn ${scanning?"scanning":""}`} onClick={onScan} disabled={scanning}>
-          {scanning ? <><span className="spinner"/>ANALYSE...</> : <>LANCER LE SCAN</>}
+          {scanning ? <><span className="spinner"/>SCANNING...</> : <>START SCAN</>}
         </button>
       </div>
 

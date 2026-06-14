@@ -4,9 +4,8 @@ import { loadHistorySmart, deleteFromHistory, clearHistory } from "../helpers/hi
 import { generatePDF } from "../helpers/pdfHelper";
 import { SEV, API_BASE_URL, REPORT_URL } from "../config/constants";
 import { normalizeReport, getScoreColor } from "../helpers/reportHelpers";
-import { SeverityBadge } from "../components/SeverityBadge";
-import { CodeBlock } from "../components/CodeBlock";
 import { HistoryCardSkeleton } from "../components/Skeleton";
+import ReportViewer from "../components/ReportViewer";
 
 /**
  * History page — view and manage past scans
@@ -33,7 +32,7 @@ export function HistoryPage({ authUser, onBack }) {
         const token = localStorage.getItem("vulnscan_token");
         
         if (!token) {
-          setError("Session expirée. Veuillez vous reconnecter.");
+          setError("Session expired. Please log in again.");
           setLoading(false);
           return;
         }
@@ -45,7 +44,7 @@ export function HistoryPage({ authUser, onBack }) {
           setFromCache(result.fromCache);
           setStale(result.stale || false);
           if (result.stale) {
-            setError("(Données en cache - connexion lente)");
+            setError("(Cached data - slow connection)");
           }
         } else if (result.data.length === 0) {
           setHistory([]);
@@ -53,11 +52,11 @@ export function HistoryPage({ authUser, onBack }) {
             setError("");
           }
         } else {
-          setError(result.error || "Impossible de charger l'historique");
+          setError(result.error || "Unable to load history");
           setHistory([]);
         }
       } catch (err) {
-        setError("Erreur lors du chargement de l'historique");
+        setError("Error loading history");
         setHistory([]);
       } finally {
         setLoading(false);
@@ -68,7 +67,7 @@ export function HistoryPage({ authUser, onBack }) {
   }, [authUser]);
 
   const handleClearAll = () => {
-    if (!window.confirm("Êtes-vous sûr de vouloir TOUT effacer ? Cette action est irréversible.")) return;
+    if (!window.confirm("Are you sure you want to clear EVERYTHING? This action is irreversible.")) return;
 
     const currentHistory = [...history];
     clearHistory();
@@ -87,15 +86,15 @@ export function HistoryPage({ authUser, onBack }) {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ user_id: userId, scan_id: entry.scan_id })
-        }).catch(err => console.error("Erreur suppression backend :", err));
+        }).catch(err => console.error("Backend deletion error:", err));
       });
     } catch (err) {
-      console.error("Erreur générale suppression :", err);
+      console.error("General deletion error:", err);
     }
   };
 
   const handleDeleteOne = async (id) => {
-    if (!window.confirm("Voulez-vous vraiment supprimer ce scan ?")) return;
+    if (!window.confirm("Do you really want to delete this scan?")) return;
 
     setHistory(prev => prev.filter(h => h.scan_id !== id));
     if (expandedId === id) { setExpandedId(null); }
@@ -111,7 +110,7 @@ export function HistoryPage({ authUser, onBack }) {
         body: JSON.stringify({ user_id: userId, scan_id: id })
       });
     } catch (err) {
-      console.error("Erreur suppression backend :", err);
+      console.error("Backend deletion error:", err);
     }
   };
 
@@ -142,7 +141,7 @@ export function HistoryPage({ authUser, onBack }) {
         setExpandedData(prev => ({ ...prev, [id]: reportData }));
       }
     } catch (e) {
-      console.error("Erreur chargement rapport :", e);
+      console.error("Error loading report:", e);
     } finally {
       setLoadingReport(null);
     }
@@ -151,7 +150,7 @@ export function HistoryPage({ authUser, onBack }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
   return (
@@ -159,16 +158,16 @@ export function HistoryPage({ authUser, onBack }) {
       <div className="history-page fade-in">
         <div className="history-header">
           <div>
-            <h2 className="history-title">Historique des scans</h2>
+            <h2 className="history-title">Scan History</h2>
             <p className="history-sub">
-              {history.length} scan(s) sauvegardé(s)
-              {fromCache && " (cache local)"}
-              {stale && " • données en cache"}
+              {history.length} saved scan(s)
+              {fromCache && " (local cache)"}
+              {stale && " • cached data"}
             </p>
           </div>
           <div style={{display:"flex", gap:10}}>
-            <button className="btn-outline" onClick={onBack}>← Retour</button>
-            {history.length > 0 && <button className="btn-danger" onClick={handleClearAll}>Tout effacer</button>}
+            <button className="btn-outline" onClick={onBack}>← Back</button>
+            {history.length > 0 && <button className="btn-danger" onClick={handleClearAll}>Clear All</button>}
           </div>
         </div>
 
@@ -185,8 +184,8 @@ export function HistoryPage({ authUser, onBack }) {
         {!loading && history.length === 0 && !error && (
           <div className="empty-state">
             <div className="empty-icon"><IconHistory size={32}/></div>
-            <div className="empty-title">AUCUN HISTORIQUE</div>
-            <p className="empty-sub">Vos scans apparaîtront ici après chaque analyse.</p>
+            <div className="empty-title">NO HISTORY</div>
+            <p className="empty-sub">Your scans will appear here after each analysis.</p>
           </div>
         )}
 
@@ -210,7 +209,7 @@ export function HistoryPage({ authUser, onBack }) {
                       <div className="hist-card-url">{entry.url || "—"}</div>
                       <div className="hist-card-meta">
                         <span>📅 {formatDate(entry.generated_at)}</span>
-                        <span>🐛 {entry.total_patches} vulnérabilité(s)</span>
+                        <span>🐛 {entry.total_patches} vulnerability(s)</span>
                         {entry.scan_duration_total && <span>⏱ {entry.scan_duration_total}s</span>}
                       </div>
                       <div className="hc-badges">
@@ -223,10 +222,10 @@ export function HistoryPage({ authUser, onBack }) {
                     </div>
 
                     <div className="hist-card-actions">
-                      <button className="btn-icon" title="Exporter en PDF" onClick={(e) => { e.stopPropagation(); generatePDF(entry); }}>
+                      <button className="btn-icon" title="Export to PDF" onClick={(e) => { e.stopPropagation(); generatePDF(entry); }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                       </button>
-                      <button className="btn-icon" title="Supprimer" onClick={(e) => { e.stopPropagation(); handleDeleteOne(entry.scan_id); }}>
+                      <button className="btn-icon" title="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteOne(entry.scan_id); }}>
                         <IconTrash />
                       </button>
                       <span className={`hist-chevron ${isOpen ? "hist-chevron--open" : ""}`}>
@@ -241,54 +240,20 @@ export function HistoryPage({ authUser, onBack }) {
                       {isLoadingThis && (
                         <div className="hist-loading">
                           <div className="hist-loading-spinner" />
-                          <span>Chargement du rapport...</span>
+                          <span>Loading report...</span>
                         </div>
                       )}
 
                       {!isLoadingThis && !report && (
                         <div className="hist-loading">
-                          <span style={{ color: "var(--muted)" }}>Aucun rapport détaillé disponible.</span>
+                          <span style={{ color: "var(--muted)" }}>No detailed report available.</span>
                         </div>
                       )}
 
                       {!isLoadingThis && report && (
-                        <>
-                          {/* Mini metrics */}
-                          <div className="hist-metrics">
-                            <div className="hist-metric">
-                              <div className="hist-metric-val" style={{ color: getScoreColor(report.score) }}>{report.score}</div>
-                              <div className="hist-metric-label">Score</div>
-                            </div>
-                            <div className="hist-metric">
-                              <div className="hist-metric-val">{report.total_patches}</div>
-                              <div className="hist-metric-label">Vulnérabilités</div>
-                            </div>
-                            <div className="hist-metric">
-                              <div className="hist-metric-val">{report.pages_crawled || "—"}</div>
-                              <div className="hist-metric-label">Pages</div>
-                            </div>
-                            <div className="hist-metric">
-                              <div className="hist-metric-val">{report.scan_duration_seconds ? `${report.scan_duration_seconds}s` : "—"}</div>
-                              <div className="hist-metric-label">Scan</div>
-                            </div>
-                            <div className="hist-metric">
-                              <div className="hist-metric-val">{report.scan_duration_total ? `${report.scan_duration_total}s` : (entry.scan_duration_total ? `${entry.scan_duration_total}s` : "—")}</div>
-                              <div className="hist-metric-label">Total + IA</div>
-                            </div>
-                          </div>
-
-                          {/* Patches list */}
-                          {(report.patches || []).length > 0 && (
-                            <div className="hist-patches">
-                              {report.patches.map((patch, i) => {
-                                const sev = SEV[patch.severity?.toUpperCase()] || SEV.INFO;
-                                return (
-                                  <HistoryPatchCard key={patch.vuln_id || i} patch={patch} sev={sev} index={i} />
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
+                        <div style={{ padding: "0 16px 16px" }}>
+                          <ReportViewer report={report} hideTopbar={true} />
+                        </div>
                       )}
                     </div>
                   )}
@@ -302,54 +267,3 @@ export function HistoryPage({ authUser, onBack }) {
   );
 }
 
-/**
- * Individual patch card inside the history dropdown — also expandable
- */
-function HistoryPatchCard({ patch, sev, index }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className={`hist-patch ${open ? "hist-patch--open" : ""}`} style={{ animationDelay: `${index * 0.04}s` }}>
-      <div className="hist-patch-head" onClick={() => setOpen(o => !o)}>
-        <div className="sev-dot-sm" style={{ background: sev.color, boxShadow: `0 0 8px ${sev.glow}` }} />
-        <div className="hist-patch-info">
-          <span className="hist-patch-type">{patch.type}</span>
-          <span className="hist-patch-file">{patch.fichier}{patch.champ ? ` → ${patch.champ}` : ""}</span>
-        </div>
-        <SeverityBadge severity={patch.severity} sev={sev} />
-        <span className={`hist-chevron-sm ${open ? "hist-chevron-sm--open" : ""}`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </span>
-      </div>
-
-      {open && (
-        <div className="hist-patch-body">
-          {patch.explication && (
-            <div className="hist-section">
-              <div className="hist-section-label">⚠️ Explication</div>
-              <p className="hist-section-text">{patch.explication}</p>
-            </div>
-          )}
-          {patch.solution && (
-            <div className="hist-section">
-              <div className="hist-section-label">💡 Solution proposée</div>
-              <p className="hist-section-text">{patch.solution}</p>
-            </div>
-          )}
-          {patch.code_vulnerable && (
-            <div className="hist-section">
-              <div className="code-block-header danger-header"><span>🎯 Point d'entrée</span></div>
-              <CodeBlock code={patch.code_vulnerable} filename={patch.fichier} type="vulnerable" />
-            </div>
-          )}
-          {patch.code_corrige && (
-            <div className="hist-section">
-              <div className="code-block-header success-header"><span>✅ Correctif proposé — généré par IA</span></div>
-              <CodeBlock code={patch.code_corrige} filename={patch.fichier} type="fixed" />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}

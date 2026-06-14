@@ -20,7 +20,7 @@ export const SEV = {
   INFO:     { color: "#4cc9f0", bg: "rgba(76,201,240,0.1)",  glow: "rgba(76,201,240,0.2)",  label: "INFO"     },
 };
 
-export const SCAN_STEPS = ["Connexion","Crawling","Détection","Analyse IA","Rapport"];
+export const SCAN_STEPS = ["Connection","Crawling","Detection","AI Analysis","Report"];
 
 /** Maps backend step names to SCAN_STEPS index for the progress bar */
 export const STEP_MAP = {

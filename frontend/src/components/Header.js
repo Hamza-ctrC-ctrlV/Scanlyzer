@@ -6,7 +6,7 @@ import React from "react";
 export function Header({ page, setPage, onLogout, userEmail, theme, toggleTheme }) {
   return (
     <header className="header">
-      <div className="logo" onClick={() => setPage("dashboard")} style={{cursor: "pointer"}} title="Retour au dashboard">
+      <div className="logo" onClick={() => setPage("dashboard")} style={{cursor: "pointer"}} title="Back to dashboard">
         <div className="logo-text">SCAN<span>LYZER</span></div>
       </div>
       <nav className="nav">
@@ -14,18 +14,18 @@ export function Header({ page, setPage, onLogout, userEmail, theme, toggleTheme 
           Dashboard
         </button>
         <button className={`nav-link ${page==="history"?"active":""}`} onClick={()=>setPage("history")}>
-          Historique
+          History
         </button>
         <button className={`nav-link ${page==="verify"?"active":""}`} onClick={()=>setPage("verify")}>
-          Vérification
+          Verification
         </button>
       </nav>
       <div style={{display:"flex", alignItems:"center", gap:"12px"}}>
         <button className="theme-toggle" onClick={toggleTheme}>
-          {theme === "light" ? "🌙 Sombre" : "☀️ Clair"}
+          {theme === "light" ? "🌙 Dark" : "☀️ Light"}
         </button>
         {userEmail && <div className="user-chip">{userEmail}</div>}
-        <button className="nav-link" onClick={onLogout}>Déconnexion</button>
+        <button className="nav-link" onClick={onLogout}>Logout</button>
       </div>
     </header>
   );

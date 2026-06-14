@@ -1,17 +1,88 @@
+import secrets
+import requests
+from bs4 import BeautifulSoup
 from flask import Blueprint, request, jsonify
-from datetime import datetime, timezone
-from .verify import create_verification, check_html_file, check_meta_tag
-from ai_engine.supabase_client import _get_supabase_admin_client
-from .utils import extract_domain
+from datetime import datetime, timedelta, timezone
 import functools
 
+from ai_engine.supabase_client import _get_supabase_admin_client, ensure_user_profile
+from utils.helpers import extract_domain
+from api.auth import require_auth
+
 # Blueprint — register this in your main app.py  with:
-# from routes.verify_routes import verify_bp
+# from api.verify_routes import verify_bp
 # app.register_blueprint(verify_bp)
 verify_bp = Blueprint("verify", __name__)
 
 
-from api.routes import require_auth
+def create_verification(user_id, domain):
+    """
+    Generates a random token and stores it in Supabase.
+    Called when the user submits a domain they want to verify.
+    Returns the token so the Flask route can send it to the frontend.
+    """
+    token = secrets.token_hex(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    ensure_user_profile(user_id=user_id)
+
+    supabase = _get_supabase_admin_client()
+    supabase.table("domain_verifications").insert({
+        "user_id":    user_id,
+        "domain":     domain,
+        "token":      token,
+        "verified":   False,
+        "expires_at": expires_at.isoformat()
+    }).execute()
+
+    return token
+
+
+def check_html_file(domain, expected_token):
+    """
+    Verifies ownership by fetching a root-level HTML file from the target domain.
+    The user must place a file at /scanner-verify.html containing the exact
+    verification text. Returns True if verified, False otherwise.
+    """
+    expected_value = f"scanner-verify={expected_token}"
+    urls = [
+        f"https://{domain}/scanner-verify.html",
+        f"http://{domain}/scanner-verify.html",
+    ]
+
+    for url in urls:
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                continue
+            body = response.text.strip()
+            if expected_value in body:
+                return True
+        except requests.RequestException:
+            continue
+    return False
+
+
+def check_meta_tag(domain, expected_token):
+    """
+    Verifies ownership by checking the homepage for a
+    <meta name="scanlyzer-verify" content="scanner-verify=..."> tag.
+    """
+    expected_value = f"scanner-verify={expected_token}"
+
+    for scheme in ["https", "http"]:
+        try:
+            url = f"{scheme}://{domain}"
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                continue
+
+            soup = BeautifulSoup(response.text, "html.parser")
+            tag = soup.find("meta", {"name": "scanlyzer-verify"})
+            if tag and tag.get("content", "").strip() == expected_value:
+                return True
+        except requests.RequestException:
+            continue
+    return False
 
 
 @verify_bp.route("/verify/start", methods=["POST"])
@@ -40,7 +111,7 @@ def start_verification():
     
     if existing.data:
         if existing.data[0].get("verified"):
-            return jsonify({"error": f"{domain} est déjà vérifié."}), 400
+            return jsonify({"error": f"{domain} is already verified."}), 400
         else:
             # Delete the pending verification so we can generate a fresh one
             supabase.table("domain_verifications").delete().eq("user_id", user_id).eq("domain", domain).execute()
@@ -152,3 +223,24 @@ def list_verifications():
             unique_domains.append(row)
             
     return jsonify({"verifications": unique_domains})
+
+@verify_bp.route("/verify/delete", methods=["DELETE"])
+@require_auth
+def delete_verification():
+    """
+    Deletes a verified domain for the authenticated user.
+    Expects JSON body: { "domain": "example.com" }
+    """
+    data = request.get_json()
+    domain = data.get("domain", "")
+    user_id = request.auth_user.get("user_id")
+
+    if not domain:
+        return jsonify({"error": "Domain is required"}), 400
+
+    supabase = _get_supabase_admin_client()
+    
+    # Delete all verifications for this domain and user
+    result = supabase.table("domain_verifications").delete().eq("user_id", user_id).eq("domain", domain).execute()
+    
+    return jsonify({"success": True, "message": f"Verification for {domain} deleted successfully."})

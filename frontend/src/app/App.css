@@ -344,6 +344,64 @@ body {
   font-size: 0.9rem;
 }
 
+.verified-sites-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.verified-site-item {
+  padding: 16px 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.verified-site-item:hover {
+  border-color: rgba(56,189,248,0.2);
+  background: rgba(56,189,248,0.03);
+}
+.verified-site-item strong {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.verified-date {
+  font-family: var(--font-c);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(6,214,160,0.1);
+  border: 1px solid rgba(6,214,160,0.25);
+  color: #06d6a0;
+  border-radius: 100px;
+  font-family: var(--font-c);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+body[data-theme="light"] .verified-site-item {
+  background: rgba(255,255,255,0.8);
+  border-color: rgba(26,60,140,0.15);
+}
+body[data-theme="light"] .verified-site-item:hover {
+  background: rgba(26,86,255,0.04);
+  border-color: rgba(26,86,255,0.25);
+}
+body[data-theme="light"] .verified-site-item strong {
+  color: #0d1526;
+}
+
 /* ── URL INPUT ── */
 .url-wrapper {
   display: flex; align-items: stretch; height: 66px;

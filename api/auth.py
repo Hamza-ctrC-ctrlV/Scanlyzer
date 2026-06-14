@@ -91,3 +91,83 @@ def verify_route():
         return jsonify(result), 200
     else:
         return jsonify(result), 401
+
+
+# ======================================================================
+# Authentication decorators
+# ======================================================================
+
+def _extract_token() -> str | None:
+    """Extract Bearer token from the Authorization header or query parameter."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth.split(None, 1)[1].strip()
+        
+    # Fallback for EventSource (SSE) which cannot send custom headers natively
+    token_param = request.args.get("token")
+    if token_param:
+        return token_param
+        
+    return None
+
+
+from functools import wraps
+import os
+from utils.helpers import standardize_error_response
+
+def require_auth(f):
+    """Decorator that verifies the user's JWT token and injects `auth_user`
+    into the request context via `request.auth_user`.
+
+    Returns 401 if token is missing or invalid.
+    """
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        token = _extract_token()
+        if not token:
+            return jsonify(standardize_error_response(
+                False,
+                "Missing or invalid Authorization header",
+                error_code="UNAUTHORIZED"
+            )), 401
+
+        user_info = verify_token(token)
+        if not user_info or not user_info.get("success"):
+            return jsonify(standardize_error_response(
+                False,
+                "Invalid or expired token",
+                error_code="UNAUTHORIZED"
+            )), 401
+
+        # Attach verified user info to the request
+        request.auth_user = user_info
+        return f(*args, **kwargs)
+
+    return wrapped
+
+
+def require_api_key(f):
+    """Decorator to require an API key if `API_PUBLIC_KEY` is set.
+
+    If `API_PUBLIC_KEY` is not set, the decorator is a no-op (keeps backwards compatibility).
+    Clients may send the key as `Authorization: Bearer <key>` header or `api_key` query param.
+    """
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        api_key = os.getenv("API_PUBLIC_KEY")
+        if not api_key:
+            return f(*args, **kwargs)
+
+        # Reuse shared token extraction (Bearer header + query param)
+        token = _extract_token()
+
+        # Also accept api_key form param (legacy support)
+        if not token:
+            token = request.args.get("api_key") or request.form.get("api_key")
+
+        if not token or token != api_key:
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+        return f(*args, **kwargs)
+
+    return wrapped

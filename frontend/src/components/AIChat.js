@@ -212,7 +212,7 @@ export function AIChat({ context, token, onClose }) {
           ref={inputRef}
           className="ai-chat-input"
           rows={2}
-          placeholder="Posez une question sur cette vulnérabilité…"
+          placeholder="Ask a question about this vulnerability..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
