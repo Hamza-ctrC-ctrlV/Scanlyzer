@@ -2,6 +2,8 @@ import React from "react";
 import { SEV } from "../config/constants";
 import { ScoreRing } from "./Charts";
 
+const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+
 /**
  * Report metrics — score and severity tiles
  */
@@ -23,10 +25,10 @@ function ReportMetrics({ report, scoreColor, scoreVerdict }) {
       </div>
 
       <div className="sev-tiles">
-        {Object.entries(report.stats).map(([k,v])=>(
+        {SEVERITY_ORDER.map((k) => (
           <div className="sev-tile" key={k} style={{"--tc":SEV[k]?.color,"--tg":SEV[k]?.glow}}>
             <div className="st-glow"/>
-            <div className="sev-count">{v}</div>
+            <div className="sev-count">{report.stats[k] ?? 0}</div>
             <div className="sev-name">{k}</div>
             <div className="st-bar" style={{background:SEV[k]?.color}}/>
           </div>

@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { SEV } from "../config/constants";
 import { Donut } from "./Charts";
 
+const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+
 /**
  * Report charts — horizontal bar and donut visualization
  */
@@ -14,21 +16,24 @@ function ReportCharts({ report }) {
   return (
     <div className="charts-row">
       <div className="chart-panel">
-        <div className="panel-title">Répartition par sévérité</div>
+        <div className="panel-title">Severity distribution</div>
         <div className="hbar-list">
-          {Object.entries(report.stats).map(([k,v])=>(
-            <div className="hbar-item" key={k}>
-              <div className="hbar-lbl">{k}</div>
-              <div className="hbar-track">
-                <div className="hbar-fill" style={{
-                  width:`${(v/maxStat)*100}%`,
-                  background:SEV[k]?.color||"#4cc9f0",
-                  boxShadow:`0 0 8px ${SEV[k]?.glow}`
-                }}/>
+          {SEVERITY_ORDER.map((k) => {
+            const v = report.stats[k] ?? 0;
+            return (
+              <div className="hbar-item" key={k}>
+                <div className="hbar-lbl">{k}</div>
+                <div className="hbar-track">
+                  <div className="hbar-fill" style={{
+                    width:`${(v/maxStat)*100}%`,
+                    background:SEV[k]?.color||"#4cc9f0",
+                    boxShadow:`0 0 8px ${SEV[k]?.glow}`
+                  }}/>
+                </div>
+                <div className="hbar-val" style={{color:SEV[k]?.color}}>{v}</div>
               </div>
-              <div className="hbar-val" style={{color:SEV[k]?.color}}>{v}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -38,17 +43,17 @@ function ReportCharts({ report }) {
           <Donut stats={report.stats}/>
           <div className="donut-inner">
             <div className="donut-total">{total}</div>
-            <div className="donut-sub">vulnérabilités</div>
+            <div className="donut-sub">vulnerabilities</div>
           </div>
         </div>
         <div className="donut-legend">
-          {Object.entries(report.stats).map(([k,v])=>(
+          {SEVERITY_ORDER.map((k) => (
             <div className="dl-item" key={k}>
               <div className="dl-left">
                 <div className="dl-dot" style={{background:SEV[k]?.color}}/>
                 <span className="dl-name">{k}</span>
               </div>
-              <span className="dl-cnt" style={{color:SEV[k]?.color}}>{v}</span>
+              <span className="dl-cnt" style={{color:SEV[k]?.color}}>{report.stats[k] ?? 0}</span>
             </div>
           ))}
         </div>

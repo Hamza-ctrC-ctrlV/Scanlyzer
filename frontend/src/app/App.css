@@ -910,7 +910,7 @@ body[data-theme="light"] .verified-site-item strong {
 }
 
 /* ════════════════════════════════════════════════════════════
-   TRANSITIONS POUR LE CHANGEMENT DE THÈME
+  THEME TRANSITION STYLES
 ════════════════════════════════════════════════════════════ */
 body, .header, .vuln-card, .score-panel,
 .sev-tile, .chart-panel, .donut-panel,
@@ -919,7 +919,7 @@ body, .header, .vuln-card, .score-panel,
 }
 
 /* ════════════════════════════════════════════════════════════
-   MODE CLAIR (activé par data-theme="light" sur le body)
+  LIGHT MODE (enabled by data-theme="light" on body)
 ════════════════════════════════════════════════════════════ */
 body[data-theme="light"] {
   --bg:     #f0f4ff;
@@ -1088,7 +1088,7 @@ body[data-theme="light"] .verified-badge {
 
 
 /* ════════════════════════════════════════════════════════════
-   BOUTON TOGGLE THÈME (lune / soleil)
+  THEME TOGGLE BUTTON (moon / sun)
 ════════════════════════════════════════════════════════════ */
 .theme-toggle {
   background: rgba(255,255,255,0.06); border: 1px solid var(--border);

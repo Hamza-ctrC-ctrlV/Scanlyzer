@@ -129,7 +129,7 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Impossible de se connecter.");
+        throw new Error(data.error || "Unable to sign in.");
       }
 
       handleAuthSuccess({
@@ -138,7 +138,7 @@ export default function App() {
         token: data.session?.access_token,
       });
     } catch (error) {
-      setAuthError(error.message || "Impossible de se connecter.");
+      setAuthError(error.message || "Unable to sign in.");
     } finally {
       setAuthBusy(false);
     }
@@ -146,7 +146,7 @@ export default function App() {
 
   const handleSignup = async (email, password, confirmPassword) => {
     if (password !== confirmPassword) {
-      setAuthError("Les mots de passe ne correspondent pas.");
+      setAuthError("Passwords do not match.");
       return;
     }
 
@@ -162,7 +162,7 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Impossible de créer le compte.");
+        throw new Error(data.error || "Unable to create account.");
       }
 
       handleAuthSuccess({
@@ -171,7 +171,7 @@ export default function App() {
         token: data.session?.access_token || data.user_id,
       });
     } catch (error) {
-      setAuthError(error.message || "Impossible de créer le compte.");
+      setAuthError(error.message || "Unable to create account.");
     } finally {
       setAuthBusy(false);
     }
@@ -200,8 +200,8 @@ export default function App() {
         <main className="auth-shell">
           <section className="auth-card">
             <div className="auth-badge">Supabase Auth</div>
-            <h1 className="auth-title">Chargement...</h1>
-            <p className="auth-subtitle">Vérification de votre session sécurisée.</p>
+            <h1 className="auth-title">Loading...</h1>
+            <p className="auth-subtitle">Verifying your secure session.</p>
           </section>
         </main>
       </div>
@@ -216,7 +216,7 @@ export default function App() {
       {!authUser && (
         <div className="auth-theme-toggle">
           <button className="theme-toggle" onClick={toggleTheme}>
-            {theme === "light" ? "🌙 Sombre" : "☀️ Clair"}
+            {theme === "light" ? "🌙 Dark" : "☀️ Light"}
           </button>
         </div>
       )}

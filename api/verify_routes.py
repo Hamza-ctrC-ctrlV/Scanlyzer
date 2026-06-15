@@ -221,8 +221,36 @@ def list_verifications():
         if row["domain"] not in seen:
             seen.add(row["domain"])
             unique_domains.append(row)
-            
-    return jsonify({"verifications": unique_domains})
+
+    # Compute expiry state for each verification (24 hours from verified_at)
+    now = datetime.now(timezone.utc)
+    verifications = []
+    for row in unique_domains:
+        verified_at = row.get("verified_at")
+        expired = False
+        expires_at = None
+        if verified_at:
+            try:
+                vdt = datetime.fromisoformat(verified_at)
+                if vdt.tzinfo is None:
+                    vdt = vdt.replace(tzinfo=timezone.utc)
+                expires_at_dt = vdt + timedelta(hours=24)
+                expires_at = expires_at_dt.isoformat()
+                expired = now > expires_at_dt
+            except Exception:
+                # If parsing fails, treat as not expired
+                expired = False
+                expires_at = None
+
+        verifications.append({
+            "domain": row.get("domain"),
+            "verified_at": verified_at,
+            "created_at": row.get("created_at"),
+            "expired": expired,
+            "expires_at": expires_at,
+        })
+
+    return jsonify({"verifications": verifications})
 
 @verify_bp.route("/verify/delete", methods=["DELETE"])
 @require_auth
@@ -243,4 +271,4 @@ def delete_verification():
     # Delete all verifications for this domain and user
     result = supabase.table("domain_verifications").delete().eq("user_id", user_id).eq("domain", domain).execute()
     
-    return jsonify({"success": True, "message": f"Verification for {domain} deleted successfully."})
+    return jsonify({"success": True, "message": f"Verification for {domain} deleted successfully."})

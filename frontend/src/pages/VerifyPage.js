@@ -171,12 +171,18 @@ export function VerifyPage({ authUser }) {
                   <li key={idx} className="verified-site-item">
                     <div>
                       <strong>{site.domain}</strong>
-                      <div className="verified-date">
-                        Verified on {new Date(site.verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                      </div>
+                              <div className="verified-date">
+                                {site.expired ? (
+                                  `Expired on ${new Date(site.expires_at || site.verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                                ) : (
+                                  `Verified on ${new Date(site.verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                                )}
+                              </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div className="verified-badge">✓ Verified</div>
+                      <div className={site.expired ? "verified-badge expired" : "verified-badge"}>
+                        {site.expired ? "Expired" : "✓ Verified"}
+                      </div>
                       <button 
                         className="btn-icon" 
                         title="Delete verification"

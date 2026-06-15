@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan_20260615_211922",
-  "target_url": "http://localhost:8000",
-  "scan_date": "2026-06-15T21:19:22.987364",
-  "scan_duration_seconds": 2.64,
+  "scan_id": "scan_20260615_234135",
+  "target_url": "http://localhost:8000/",
+  "scan_date": "2026-06-15T23:41:35.919185",
+  "scan_duration_seconds": 2.75,
   "pages_crawled": 2,
   "forms_found": 2,
   "total_vulnerabilities": 3,

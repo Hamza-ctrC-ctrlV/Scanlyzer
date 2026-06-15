@@ -12,7 +12,7 @@ function CopyBtn({ text }) {
       navigator.clipboard.writeText(text||"");
       setCopied(true); setTimeout(()=>setCopied(false), 2000);
     }}>
-      <IconCopy/> {copied ? "Copié !" : "Copier"}
+      <IconCopy/> {copied ? "Copied!" : "Copy"}
     </button>
   );
 }

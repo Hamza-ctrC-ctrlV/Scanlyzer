@@ -3,17 +3,32 @@
  */
 
 /**
- * Calculate security score based on CONFIRMED vulnerabilities
- * Score = (confirmed_vulns / total_vulns) * 100
- * 100 = all confirmed (bad) | 0 = none confirmed (good)
+ * Calculate security score using weighted severity.
+ * The score is the weighted severity total divided by the maximum possible
+ * severity total for the same number of vulnerabilities, then converted to a
+ * percentage out of 100.
  */
+const SEVERITY_WEIGHTS = {
+  CRITICAL: 30,
+  HIGH: 25,
+  MEDIUM: 15,
+  LOW: 10,
+  INFO: 5,
+};
+
 export function computeScore(patches) {
-  if (!patches || patches.length === 0) return 0; // No vulns = good score
-  
-  const confirmedCount = patches.filter(p => p.confirmed === true).length;
-  const score = (confirmedCount / patches.length) * 100;
-  
-  return Math.round(score);
+  if (!patches || patches.length === 0) return 0;
+
+  const maxWeight = Math.max(...Object.values(SEVERITY_WEIGHTS));
+  const totalWeight = patches.reduce((sum, p) => {
+    const severity = (p.severity || "").toUpperCase();
+    return sum + (SEVERITY_WEIGHTS[severity] || 0);
+  }, 0);
+
+  const maxTotalWeight = patches.length * maxWeight;
+  const score = maxTotalWeight === 0 ? 0 : (totalWeight / maxTotalWeight) * 100;
+
+  return Math.round(Math.min(100, Math.max(0, score)));
 }
 
 /**
@@ -30,7 +45,7 @@ export function computeStats(patches) {
 
 /**
  * Get color based on score (INVERTED: 100 = bad/red, 0 = good/green)
- * Score = % of vulnerabilities that are confirmed
+ * Score = weighted severity percentage from 0 to 100
  */
 export function getScoreColor(score) {
   if (score > 60) return "#ff4d6d";   // red - most confirmed (bad)
@@ -42,10 +57,11 @@ export function getScoreColor(score) {
  * Get verdict text based on score (INVERTED: 100 = bad, 0 = good)
  */
 export function getScoreVerdict(score) {
-  if (score > 60) return "CRITIQUE";
-  if (score > 30) return "MODÉRÉ";
-  return "BON";
+  if (score > 60) return "CRITICAL";
+  if (score > 30) return "MODERATE";
+  return "GOOD";
 }
+
 
 /**
  * Normalize report structure from API response

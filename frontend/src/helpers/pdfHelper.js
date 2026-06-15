@@ -1,12 +1,12 @@
 import { jsPDF } from "jspdf";
 
 /* ════════════════════════════════════════════════════════════
-   GÉNÉRATION PDF (jsPDF)
-   → Rapport professionnel fond blanc
-   → Page 1 : couverture + infos + score
-   → Page 2 : résumé exécutif + tableau récapitulatif
-   → Pages suivantes : une page par vulnérabilité avec
-     point d'entrée (rouge) et correctif proposé (vert)
+   PDF GENERATION (jsPDF)
+   → Professional white-paper layout
+   → Page 1: cover + metadata + score
+   → Page 2: executive summary + vulnerability summary table
+   → Following pages: one vulnerability per page with
+     entry point (red) and AI-generated fix (green)
 ════════════════════════════════════════════════════════════ */
 export function generatePDF(scan) {
   const doc     = new jsPDF();
@@ -16,13 +16,13 @@ export function generatePDF(scan) {
   const CW      = W - MARGIN * 2;
 
   const scoreCol = scan.score < 40 ? [192,0,0] : scan.score < 70 ? [180,95,0] : [0,128,80];
-  const verdict  = scan.score < 40 ? "CRITIQUE" : scan.score < 70 ? "MODÉRÉ" : "BON";
+  const verdict  = scan.score < 40 ? "CRITICAL" : scan.score < 70 ? "MODERATE" : "GOOD";
 
   const sevMeta = {
-    CRITICAL: { label: "Critique", col: [192,0,0]   },
-    HIGH:     { label: "Élevé",    col: [180,95,0]  },
-    MEDIUM:   { label: "Moyen",    col: [160,130,0] },
-    LOW:      { label: "Faible",   col: [0,128,80]  },
+    CRITICAL: { label: "Critical", col: [192,0,0]   },
+    HIGH:     { label: "High",     col: [180,95,0]  },
+    MEDIUM:   { label: "Medium",   col: [160,130,0] },
+    LOW:      { label: "Low",      col: [0,128,80]  },
     INFO:     { label: "Info",     col: [30,80,180] },
   };
 
@@ -38,8 +38,8 @@ export function generatePDF(scan) {
     doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
     doc.line(MARGIN, 284, W - MARGIN, 284);
     doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    doc.text("Scanlyzer AI — Rapport confidentiel d'analyse de sécurité", MARGIN, 290);
-    doc.text(new Date().toLocaleDateString("fr-FR"), W - MARGIN, 290, { align: "right" });
+    doc.text("Scanlyzer AI — Confidential Security Analysis Report", MARGIN, 290);
+    doc.text(new Date().toLocaleDateString("en-US"), W - MARGIN, 290, { align: "right" });
     return 20;
   };
 
@@ -47,7 +47,7 @@ export function generatePDF(scan) {
     if (y + needed > 278) {
       y = newPage();
       doc.setFontSize(8); doc.setTextColor(150,150,150);
-      doc.text("(suite)", MARGIN, y); y += 8;
+      doc.text("(continued)", MARGIN, y); y += 8;
     }
     return y;
   };
@@ -83,21 +83,21 @@ export function generatePDF(scan) {
     return y + boxH + 6;
   };
 
-  // PAGE 1 : COUVERTURE
+  // PAGE 1 : COVER
   let y = newPage();
   doc.setFontSize(22); doc.setFont("helvetica","bold"); doc.setTextColor(20,20,20);
-  doc.text("Rapport d'Analyse de Sécurité Web", MARGIN, y + 12);
+  doc.text("Web Security Analysis Report", MARGIN, y + 12);
   doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,100);
-  doc.text("Généré automatiquement par Scanlyzer AI", MARGIN, y + 20);
+  doc.text("Generated automatically by Scanlyzer AI", MARGIN, y + 20);
   doc.setDrawColor(26,60,140); doc.setLineWidth(1);
   doc.line(MARGIN, y + 26, W - MARGIN, y + 26);
   y += 34;
 
   const infoRows = [
-    ["URL analysée",   scan.url || "—"],
-    ["Date du scan",   scan.generated_at ? new Date(scan.generated_at).toLocaleString("fr-FR") : new Date().toLocaleString("fr-FR")],
-    ["Identifiant",    scan.scan_id || "—"],
-    ["Vulnérabilités", `${patches.length} détectée(s)`],
+    ["Target URL",      scan.url || "—"],
+    ["Scan Date",       scan.generated_at ? new Date(scan.generated_at).toLocaleString("en-US") : new Date().toLocaleString("en-US")],
+    ["Scan ID",         scan.scan_id || "—"],
+    ["Vulnerabilities", `Total vulnerabilities found: ${patches.length}`],
   ];
   infoRows.forEach(([k, v], i) => {
     if (i % 2 === 0) { doc.setFillColor(248,249,252); doc.rect(MARGIN, y - 3, CW, 11, "F"); }
@@ -111,17 +111,17 @@ export function generatePDF(scan) {
 
   doc.setDrawColor(220,220,220); doc.setLineWidth(0.3); doc.rect(MARGIN, y, CW, 34, "S");
   doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(80,80,80);
-  doc.text("SCORE DE SÉCURITÉ GLOBAL", MARGIN + 5, y + 8);
+  doc.text("OVERALL SECURITY SCORE", MARGIN + 5, y + 8);
   doc.setFillColor(225,225,225); doc.roundedRect(MARGIN + 5, y + 12, 100, 7, 1, 1, "F");
   doc.setFillColor(...scoreCol); doc.roundedRect(MARGIN + 5, y + 12, scan.score, 7, 1, 1, "F");
   doc.setFontSize(16); doc.setFont("helvetica","bold"); doc.setTextColor(...scoreCol);
   doc.text(`${scan.score} / 100`, MARGIN + 115, y + 18);
   doc.setFontSize(9); doc.setTextColor(...scoreCol);
-  doc.text(`Niveau : ${verdict}`, MARGIN + 115, y + 27);
+  doc.text(`Verdict : ${verdict}`, MARGIN + 115, y + 27);
   y += 44;
 
   doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(20,20,20);
-  doc.text("Répartition des vulnérabilités :", MARGIN, y); y += 8;
+  doc.text("Vulnerability distribution:", MARGIN, y); y += 8;
   Object.entries(sevMeta).forEach(([k, meta]) => {
     doc.setFillColor(...meta.col); doc.circle(MARGIN + 3, y + 2, 2.5, "F");
     doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
@@ -131,24 +131,24 @@ export function generatePDF(scan) {
     y += 9;
   });
 
-  // PAGE 2 : RÉSUMÉ + TABLEAU
+  // PAGE 2 : EXECUTIVE SUMMARY + TABLE
   y = newPage();
-  y = sectionTitle(y, "Résumé exécutif");
+  y = sectionTitle(y, "Executive Summary");
   const reco = scan.score < 40
-    ? "Des vulnérabilités critiques ont été détectées. Une correction immédiate est fortement recommandée avant toute exposition publique du site."
+    ? "Critical vulnerabilities were detected. Immediate remediation is strongly recommended before any public exposure of the site."
     : scan.score < 70
-    ? "Des risques modérés ont été identifiés. Il est conseillé de traiter ces vulnérabilités rapidement afin de réduire la surface d'attaque."
-    : "Le site présente un niveau de sécurité satisfaisant. Continuez à surveiller régulièrement et appliquez les bonnes pratiques.";
+    ? "Moderate risks were identified. It is advised to address these vulnerabilities promptly to reduce your attack surface."
+    : "The site shows a satisfactory security posture. Continue to monitor regularly and follow best practices.";
   doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
   const recoLines = doc.splitTextToSize(reco, CW);
   doc.text(recoLines, MARGIN, y); y += recoLines.length * 5 + 12;
 
-  y = sectionTitle(y, "Tableau récapitulatif des vulnérabilités");
+  y = sectionTitle(y, "Vulnerability Summary Table");
   doc.setFillColor(26,60,140); doc.rect(MARGIN, y, CW, 9, "F");
   doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
-  doc.text("N°", MARGIN+2, y+6); doc.text("Type", MARGIN+14, y+6);
-  doc.text("Fichier", MARGIN+68, y+6); doc.text("Champ", MARGIN+108, y+6);
-  doc.text("Sévérité", MARGIN+146, y+6);
+  doc.text("#", MARGIN+2, y+6); doc.text("Type", MARGIN+14, y+6);
+  doc.text("File", MARGIN+68, y+6); doc.text("Field", MARGIN+108, y+6);
+  doc.text("Severity", MARGIN+146, y+6);
   y += 9;
   patches.forEach((p, i) => {
     y = checkY(y, 10);
@@ -164,12 +164,12 @@ export function generatePDF(scan) {
     y += 9;
   });
 
-  // PAGES DÉTAIL : une page par vulnérabilité
+  // DETAIL PAGES: one page per vulnerability
   patches.forEach((patch, idx) => {
     y = newPage();
     const meta = sevMeta[patch.severity?.toUpperCase()] || sevMeta.INFO;
     doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.setTextColor(20,20,20);
-    doc.text(`${idx+1}. ${patch.type || "Vulnérabilité"}`, MARGIN, y + 4);
+    doc.text(`${idx+1}. ${patch.type || "Vulnerability"}`, MARGIN, y + 4);
     const bW = 26, bX = W - MARGIN - bW;
     doc.setFillColor(...meta.col); doc.roundedRect(bX, y - 4, bW, 10, 2, 2, "F");
     doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
@@ -179,10 +179,10 @@ export function generatePDF(scan) {
     y += 15;
 
     if (patch.fichier || patch.champ || patch.url) {
-      y = sectionTitle(y, "Localisation");
-      if (patch.fichier) y = labelVal(y, "Fichier :", patch.fichier);
-      if (patch.champ)   y = labelVal(y, "Champ :",   patch.champ);
-      if (patch.url)     y = labelVal(y, "URL :",     patch.url);
+      y = sectionTitle(y, "Location");
+      if (patch.fichier) y = labelVal(y, "File:", patch.fichier);
+      if (patch.champ)   y = labelVal(y, "Field:", patch.champ);
+      if (patch.url)     y = labelVal(y, "URL:", patch.url);
       y += 4;
     }
     if (patch.explication) {
@@ -192,17 +192,17 @@ export function generatePDF(scan) {
       doc.text(lines, MARGIN, y); y += lines.length * 5 + 8;
     }
     if (patch.solution) {
-      y = checkY(y, 30); y = sectionTitle(y, "Solution proposée");
+      y = checkY(y, 30); y = sectionTitle(y, "Proposed Solution");
       doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
       const lines = doc.splitTextToSize(patch.solution, CW);
       doc.text(lines, MARGIN, y); y += lines.length * 5 + 8;
     }
     if (patch.code_vulnerable) {
-      y = checkY(y, 35); y = sectionTitle(y, "Point d'entrée");
+      y = checkY(y, 35); y = sectionTitle(y, "Entry Point");
       y = codeBlock(y, patch.code_vulnerable, [192,0,0]);
     }
     if (patch.code_corrige) {
-      y = checkY(y, 35); y = sectionTitle(y, "Correctif proposé — généré par IA");
+      y = checkY(y, 35); y = sectionTitle(y, "AI-generated Fix");
       y = codeBlock(y, patch.code_corrige, [0,128,80]);
     }
   });

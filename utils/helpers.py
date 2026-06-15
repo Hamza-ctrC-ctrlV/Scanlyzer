@@ -17,18 +17,22 @@ logger = logging.getLogger(__name__)
 EMPTY_STATS = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
 
 def compute_scan_stats(patches: list) -> tuple:
-    """Compute score based on CONFIRMED vulnerabilities.
+    """Compute score using weighted severity.
     
-    Score = (confirmed_vulnerabilities / total_vulnerabilities) * 100
-    - 100 = all confirmed (bad)
-    - 0 = none confirmed (good)
-    
-    Returns:
-        (score, stats, patches_count)
+    The score is the weighted severity total divided by the maximum possible
+    weighted severity total for the same number of vulnerabilities.
     """
     stats = dict(EMPTY_STATS)
     count = 0
-    confirmed_count = 0
+    total_weight = 0
+
+    weights = {
+        "CRITICAL": 30,
+        "HIGH": 25,
+        "MEDIUM": 15,
+        "LOW": 10,
+        "INFO": 5,
+    }
 
     for p in patches:
         if not isinstance(p, dict):
@@ -37,18 +41,17 @@ def compute_scan_stats(patches: list) -> tuple:
         sev = (p.get("severity") or "").upper()
         if sev in stats:
             stats[sev] += 1
-        
-        # Count only confirmed vulnerabilities
-        if p.get("confirmed") is True:
-            confirmed_count += 1
 
-    # Score = percentage of confirmed vulnerabilities
+        total_weight += weights.get(sev, 0)
+
     if count == 0:
-        score = 0  # No vulnerabilities = good
+        score = 0
     else:
-        score = (confirmed_count / count) * 100
-    
-    return int(round(score)), stats, count
+        max_weight = max(weights.values())
+        max_total = count * max_weight
+        score = (total_weight / max_total) * 100
+
+    return int(round(min(100, max(0, score)))), stats, count
 
 
 def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
