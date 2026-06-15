@@ -9,10 +9,15 @@ export function validateUrl(url) {
     return "URL must start with http:// or https://";
   try {
     const p = new URL(url);
-    const isLocalhost = ["localhost","127.0.0.1","0.0.0.0","::1"].some(l => p.hostname.startsWith(l));
-    if (!p.hostname)
+    const hostname = p.hostname?.toLowerCase() || "";
+    const blockedHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
+    const isLocalhost = blockedHosts.some((l) => hostname === l || hostname.startsWith(`${l}:`));
+
+    if (!hostname)
       return "Invalid domain — e.g. https://example.com";
-    if (!isLocalhost && !p.hostname.includes("."))
+    if (isLocalhost)
+      return "Scanning localhost or loopback addresses is not allowed.";
+    if (!hostname.includes("."))
       return "Invalid domain — e.g. https://example.com";
   } catch {
     return "Invalid URL — check the format.";

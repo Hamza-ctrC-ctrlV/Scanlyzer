@@ -39,10 +39,14 @@ def is_safe_url(url: str) -> bool:
             ip_str = result[4][0]
             ip_obj = ipaddress.ip_address(ip_str)
             
+            # Reject loopback addresses always, even in debug mode.
+            if ip_obj.is_loopback:
+                return False
+
             # Check if IP is in private/local/reserved ranges
-            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved:
-                if is_debug and (ip_obj.is_loopback or ip_obj.is_private):
-                    continue  # Allow localhost/private IPs in debug mode for testing
+            if ip_obj.is_private or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved:
+                if is_debug and ip_obj.is_private:
+                    continue  # Allow private IPs in debug mode for testing
                 return False
                 
         return True
