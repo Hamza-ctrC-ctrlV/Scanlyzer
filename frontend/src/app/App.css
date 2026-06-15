@@ -1108,7 +1108,7 @@ body[data-theme="light"] .theme-toggle { background: rgba(26,86,255,0.06); borde
   display: inline-flex; align-items: center; gap: 7px;
   background: linear-gradient(135deg, rgba(26,86,255,0.12), rgba(56,189,248,0.08));
   border: 1px solid rgba(56,189,248,0.28); border-radius: 10px;
-  padding: 9px 18px; margin-top: 6px;
+  padding: 9px 18px; margin-top: 6px; margin-right: 8px;
   font-family: var(--font-b); font-size: 0.82rem; font-weight: 600;
   color: #38bdf8; cursor: pointer;
   transition: all 0.22s;
@@ -1122,6 +1122,25 @@ body[data-theme="light"] .theme-toggle { background: rgba(26,86,255,0.06); borde
   background: linear-gradient(135deg, rgba(26,86,255,0.25), rgba(56,189,248,0.18));
   border-color: rgba(56,189,248,0.6);
   color: #7dd3fc;
+}
+
+/* CVE / CWE variant buttons (small visual differentiation) */
+.cve-btn {
+  background: linear-gradient(135deg, rgba(250,204,21,0.08), rgba(245,158,11,0.06));
+  border: 1px solid rgba(245,158,11,0.18);
+  color: #f59e0b; /* amber */
+}
+.cve-btn:hover { box-shadow: 0 0 14px rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.32); }
+
+.cwe-btn {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+  border: 1px solid rgba(99,102,241,0.18);
+  color: #7c3aed; /* violet */
+}
+.cwe-btn:hover { box-shadow: 0 0 14px rgba(124,58,237,0.12); border-color: rgba(99,102,241,0.32); }
+
+.ai-chat-btn[disabled], .ai-chat-btn:disabled {
+  opacity: 0.5; cursor: not-allowed; filter: grayscale(10%);
 }
 
 /* Panel container */
