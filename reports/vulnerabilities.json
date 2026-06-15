@@ -1,209 +1,65 @@
 {
-  "scan_id": "scan_20260614_202712",
-  "target_url": "http://localhost/vulnerable_site/",
-  "scan_date": "2026-06-14T20:27:12.686055",
-  "scan_duration_seconds": 0.68,
-  "pages_crawled": 1,
-  "forms_found": 1,
-  "total_vulnerabilities": 11,
+  "scan_id": "scan_20260615_115637",
+  "target_url": "http://localhost:8000/",
+  "scan_date": "2026-06-15T11:56:37.183230",
+  "scan_duration_seconds": 2.43,
+  "pages_crawled": 2,
+  "forms_found": 2,
+  "total_vulnerabilities": 3,
   "vulnerabilities": [
     {
       "id": "VULN-001",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "nom",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
+      "url": "http://localhost:8000/xss.php",
+      "method": "GET",
+      "champ": "q",
+      "payload_used": "<script>alert('XSS')</script>",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
       "confirmed": true,
       "contexte_code": {
-        "fichier": "",
+        "fichier": "xss.php",
         "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"nom\" name=\"nom\" placeholder=\"El Mansouri\" required=\"\" type=\"text\"/>"
+        "code_vulnerable": "<input name=\"q\" value=\"\"/>"
       },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     },
     {
       "id": "VULN-002",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
+      "url": "http://localhost:8000/form.php",
       "method": "POST",
-      "champ": "prenom",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
+      "champ": "name",
+      "payload_used": "<script>alert('XSS')</script>",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
       "confirmed": true,
       "contexte_code": {
-        "fichier": "",
+        "fichier": "form.php",
         "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"prenom\" name=\"prenom\" placeholder=\"Youssef\" required=\"\" type=\"text\"/>"
+        "code_vulnerable": "<input id=\"name\" name=\"name\"/>"
       },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     },
     {
       "id": "VULN-003",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
+      "type": "XSS Reflected",
+      "severity": "HIGH",
+      "url": "http://localhost:8000/form.php",
       "method": "POST",
       "champ": "email",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
+      "payload_used": "<script>alert('XSS')</script>",
+      "evidence": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body",
       "confidence": "HIGH",
       "confirmed": true,
       "contexte_code": {
-        "fichier": "",
+        "fichier": "form.php",
         "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"email\" name=\"email\" placeholder=\"youssef@email.com\" required=\"\" type=\"email\"/>"
+        "code_vulnerable": "<input id=\"email\" name=\"email\"/>"
       },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-004",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "telephone",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"telephone\" name=\"telephone\" placeholder=\"+212 6XX XXX XXX\" required=\"\" type=\"tel\"/>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-005",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "cin",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"cin\" name=\"cin\" placeholder=\"AB123456\" required=\"\" type=\"text\"/>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-006",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "adresse",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"adresse\" name=\"adresse\" placeholder=\"12, Rue Hassan II\" required=\"\" type=\"text\"/>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-007",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "ville",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<select id=\"ville\" name=\"ville\" required=\"\">\n<option disabled=\"\" selected=\"\" value=\"\">Sélectionnez votre ville</option>\n<option>Casablanca</option>\n<option>Rabat</option>\n<option>Marrakech</option>\n<option>Fès</option>\n<option>Tanger</option>\n<option>Agadir</option>\n<option>Meknès</option>\n<option>Oujda</option>\n<option>Autre</option>\n</select>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-008",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "profession",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"profession\" name=\"profession\" placeholder=\"Ingénieur, médecin, commerçant...\" required=\"\" type=\"text\"/>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-009",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "revenu",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<input id=\"revenu\" min=\"0\" name=\"revenu\" placeholder=\"Ex : 8500\" required=\"\" type=\"number\"/>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-010",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "type_compte",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<select id=\"type_compte\" name=\"type_compte\" required=\"\">\n<option disabled=\"\" selected=\"\" value=\"\">Choisissez un type</option>\n<option value=\"Compte Courant\">Compte Courant</option>\n<option value=\"Compte Épargne\">Compte Épargne</option>\n<option value=\"Compte Professionnel\">Compte Professionnel</option>\n</select>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
-    },
-    {
-      "id": "VULN-011",
-      "type": "SQL Injection",
-      "severity": "CRITICAL",
-      "url": "http://localhost/vulnerable_site/",
-      "method": "POST",
-      "champ": "message",
-      "payload_used": "' OR '1'='1' --",
-      "evidence": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response",
-      "confidence": "HIGH",
-      "confirmed": true,
-      "contexte_code": {
-        "fichier": "",
-        "ligne_estimee": 0,
-        "code_vulnerable": "<textarea id=\"message\" name=\"message\" placeholder=\"Précisez vos besoins, questions ou informations supplémentaires...\" rows=\"4\"></textarea>"
-      },
-      "description": "SQL error detected after injection: 'you have an error in your sql syntax' found in server response"
+      "description": "Payload reflected in response: '<script>alert('XSS')</script>' found in HTML body"
     }
   ]
 }

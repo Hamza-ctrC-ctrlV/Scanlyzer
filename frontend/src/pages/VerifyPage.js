@@ -224,7 +224,7 @@ export function VerifyPage({ authUser }) {
           <input
             className="url-input"
             type="text"
-            placeholder="https://example.com, http://localhost:8000, or example.com"
+            placeholder="https://example.com"
             value={url}
             onChange={e => setUrl(e.target.value)}
           />
@@ -233,8 +233,7 @@ export function VerifyPage({ authUser }) {
           </button>
         </div>
         <p className="verify-note">
-          Tip: to test locally, use a full URL like <strong>http://localhost:8000</strong>.
-          After clicking Start, the generated tag will appear below.
+            Enter the URL of the website you want to analyze and click <strong>Start</strong>. The generated tag will appear below.
         </p>
 
         {record && (
