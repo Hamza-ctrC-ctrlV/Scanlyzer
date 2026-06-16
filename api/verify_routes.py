@@ -15,6 +15,18 @@ from api.auth import require_auth
 verify_bp = Blueprint("verify", __name__)
 
 
+def is_localhost_domain(domain: str) -> bool:
+    if not domain:
+        return False
+
+    normalized = domain.lower().strip()
+    localhost_hosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
+    return any(
+        normalized == host or normalized.startswith(f"{host}:") or normalized.startswith(f"[{host}]:")
+        for host in localhost_hosts
+    )
+
+
 def create_verification(user_id, domain):
     """
     Generates a random token and stores it in Supabase.
@@ -102,6 +114,9 @@ def start_verification():
     if not domain:
         return jsonify({"error": "Invalid URL provided"}), 400
 
+    if is_localhost_domain(domain):
+        return jsonify({"error": "Localhost or loopback domains are not allowed for verification."}), 400
+
     # Always get user_id from the session — never trust the request body
     user_id = request.auth_user.get("user_id")
 
@@ -144,6 +159,9 @@ def check_verification():
 
     if not domain:
         return jsonify({"error": "Domain is required"}), 400
+
+    if is_localhost_domain(domain):
+        return jsonify({"error": "Localhost or loopback domains are not allowed for verification."}), 400
 
     # Look up the pending verification row in Supabase
     supabase = _get_supabase_admin_client()
