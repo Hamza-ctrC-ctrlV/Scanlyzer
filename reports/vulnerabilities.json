@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan_20260617_184819",
+  "scan_id": "scan_20260617_190230",
   "target_url": "https://overcoat-astride-amply.ngrok-free.dev/",
-  "scan_date": "2026-06-17T18:48:19.185005",
-  "scan_duration_seconds": 14.23,
+  "scan_date": "2026-06-17T19:02:30.264265",
+  "scan_duration_seconds": 16.85,
   "pages_crawled": 2,
   "forms_found": 2,
   "total_vulnerabilities": 3,
