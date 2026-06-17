@@ -220,6 +220,8 @@ class PatchGenerator:
                     "solution": parsed.get("solution", ""),
                     "code_vulnerable": parsed.get("code_vulnerable", vuln.get("contexte_code", {}).get("code_vulnerable", "")),
                     "code_corrige": parsed.get("code_corrige", ""),
+                    "cve_urls": parsed.get("cve_urls", []),
+                    "cwe_urls": parsed.get("cwe_urls", []),
                     "status": "success"
                 }
                 logger.info(f"Successfully generated patch for {vuln_id}")
@@ -251,6 +253,8 @@ class PatchGenerator:
             "solution": "Refer to OWASP guidelines for remediation.",
             "code_vulnerable": vuln.get("contexte_code", {}).get("code_vulnerable", ""),
             "code_corrige": "",
+            "cve_urls": [],
+            "cwe_urls": [],
             "status": "error",
             "error_message": str(last_error) if last_error else "Unknown error"
         }
