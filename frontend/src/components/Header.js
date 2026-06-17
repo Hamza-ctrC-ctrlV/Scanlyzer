@@ -22,7 +22,7 @@ export function Header({ page, setPage, onLogout, userEmail, theme, toggleTheme 
       </nav>
       <div style={{display:"flex", alignItems:"center", gap:"12px"}}>
         <button className="theme-toggle" onClick={toggleTheme}>
-          {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+          {theme === "light" ? "⏾ Dark" : "☀︎ Light"}
         </button>
         {userEmail && <div className="user-chip">{userEmail}</div>}
         <button className="nav-link" onClick={onLogout}>Logout</button>

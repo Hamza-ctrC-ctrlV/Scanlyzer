@@ -16,7 +16,7 @@ export function generatePDF(scan) {
   const CW      = W - MARGIN * 2;
 
   const scoreCol = scan.score < 40 ? [192,0,0] : scan.score < 70 ? [180,95,0] : [0,128,80];
-  const verdict  = scan.score < 40 ? "CRITICAL" : scan.score < 70 ? "MODERATE" : "GOOD";
+  const verdict  = scan.score < 40 ? "GOOD" : scan.score < 70 ? "MODERATE" : "CRITICAL";
 
   const sevMeta = {
     CRITICAL: { label: "Critical", col: [192,0,0]   },

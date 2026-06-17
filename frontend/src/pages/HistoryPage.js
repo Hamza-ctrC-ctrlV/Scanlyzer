@@ -208,8 +208,8 @@ export function HistoryPage({ authUser, onBack }) {
                     <div className="hist-card-info">
                       <div className="hist-card-url">{entry.url || "—"}</div>
                       <div className="hist-card-meta">
-                        <span>📅 {formatDate(entry.generated_at)}</span>
-                        <span>🐛 {entry.total_patches} vulnerability(s)</span>
+                        <span> {formatDate(entry.generated_at)}</span>
+                        <span> {entry.total_patches} vulnerability(s)</span>
                         {entry.scan_duration_total && <span>⏱ {entry.scan_duration_total}s</span>}
                       </div>
                       <div className="hc-badges">
