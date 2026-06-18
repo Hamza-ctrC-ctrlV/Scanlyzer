@@ -87,13 +87,15 @@ export function generatePDF(scan) {
   const doc = new jsPDF();
   const patchesReport = parseReportValue(scan.patches_report);
   const patches = scan.patches || patchesReport?.patches || [];
+  const reportSummary = scan.report_summary || scan.summary || patchesReport?.summary || patchesReport?.report_summary ||
+    "This executive summary draws from the same AI-generated findings used by the dashboard: vulnerability type, severity, explanation, and remediation guidance for each issue.";
   const totalVulnerabilities = scan.total_patches ?? patches.length;
   const W = doc.internal.pageSize.getWidth();
   const MARGIN = 18;
   const CW = W - MARGIN * 2;
 
   const score = typeof scan.score === "number" ? scan.score : 0;
-  const scoreCol = score < 40 ? [192,0,0] : score < 70 ? [180,95,0] : [0,128,80];
+  const scoreCol = score < 40 ? [0,128,80] : score < 70 ? [180,95,0] : [192,0,0];
   const verdict = score < 40 ? "GOOD" : score < 70 ? "MODERATE" : "CRITICAL";
 
   const sevMeta = {
@@ -109,15 +111,16 @@ export function generatePDF(scan) {
   const newPage = () => {
     if (pageNum > 0) doc.addPage();
     pageNum++;
-    doc.setFillColor(255,255,255); doc.rect(0, 0, W, 297, "F");
+    const H = doc.internal.pageSize.getHeight();
+    doc.setFillColor(255,255,255); doc.rect(0, 0, W, H, "F");
     doc.setFillColor(26,60,140);   doc.rect(0, 0, W, 10, "F");
     doc.setFontSize(8); doc.setTextColor(255,255,255); doc.setFont("helvetica","normal");
     doc.text(`Page ${pageNum}`, W - MARGIN, 7, { align: "right" });
     doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
-    doc.line(MARGIN, 284, W - MARGIN, 284);
+    doc.line(MARGIN, H - 14, W - MARGIN, H - 14);
     doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    doc.text("Scanlyzer AI — Confidential Security Analysis Report", MARGIN, 290);
-    doc.text(new Date().toLocaleDateString("en-US"), W - MARGIN, 290, { align: "right" });
+    doc.text("Scanlyzer AI — Confidential Security Analysis Report", MARGIN, H - 6);
+    doc.text(new Date().toLocaleDateString("en-US"), W - MARGIN, H - 6, { align: "right" });
     return 20;
   };
 
@@ -193,9 +196,9 @@ export function generatePDF(scan) {
   doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(80,80,80);
   doc.text("OVERALL SECURITY SCORE", MARGIN + 5, y + 8);
   doc.setFillColor(225,225,225); doc.roundedRect(MARGIN + 5, y + 12, 100, 7, 1, 1, "F");
-  doc.setFillColor(...scoreCol); doc.roundedRect(MARGIN + 5, y + 12, scan.score, 7, 1, 1, "F");
+  doc.setFillColor(...scoreCol); doc.roundedRect(MARGIN + 5, y + 12, score, 7, 1, 1, "F");
   doc.setFontSize(16); doc.setFont("helvetica","bold"); doc.setTextColor(...scoreCol);
-  doc.text(`${scan.score} / 100`, MARGIN + 115, y + 18);
+  doc.text(`${score} / 100`, MARGIN + 115, y + 18);
   doc.setFontSize(9); doc.setTextColor(...scoreCol);
   doc.text(`Verdict : ${verdict}`, MARGIN + 115, y + 27);
   y += 44;
@@ -203,12 +206,12 @@ export function generatePDF(scan) {
 
   // PAGE 2 : EXECUTIVE SUMMARY + TABLE
   y = newPage();
-  const verdictMsg = scan.score >= 70
+  const verdictMsg = score >= 70
     ? "Critical vulnerabilities were detected. Immediate remediation is strongly recommended before any public exposure of the site."
-    : scan.score < 70 && scan.score >= 40
+    : score < 70 && score >= 40
     ? "Moderate risks were identified. It is advised to address these vulnerabilities promptly to reduce your attack surface."
     : "The site shows a satisfactory security posture. Continue to monitor regularly and follow best practices.";
-  y = renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, CW, y, verdictMsg);
+  y = renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, CW, y, verdictMsg, reportSummary);
 
   // DETAIL PAGES: one page per vulnerability
   patches.forEach((patch, idx) => {
@@ -269,17 +272,10 @@ export function generatePDF(scan) {
  * @param {number} PAGE_WIDTH  - usable content width
  * @param {number} y           - starting y position
  * @param {string} verdictMsg  - verdict message to display
+ * @param {string} summaryText  - AI-generated report summary text
  * @returns {number} new y position after everything drawn
  */
-function renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, PAGE_WIDTH, y, verdictMsg) {
-  // Helper: resolve severity meta safely
-  function resolveSevMeta(sev) {
-    const key = Object.keys(sevMeta).find(
-      k => k.toLowerCase() === String(sev || "").toLowerCase()
-    );
-    return key ? sevMeta[key] : { label: sev || "Unknown", col: [100, 100, 100] };
-  }
-
+function renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, PAGE_WIDTH, y, verdictMsg, summaryText) {
   // SECTION 1 — EXECUTIVE SUMMARY
   doc.setFillColor(240,244,255); doc.rect(MARGIN, y, PAGE_WIDTH, 8, "F");
   doc.setFillColor(26,60,140);   doc.rect(MARGIN, y, 3, 8, "F");
@@ -288,101 +284,35 @@ function renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, PAGE_WIDTH, y,
   y += 14;
 
   doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-  const summaryText = scan.report_summary || scan.summary || patchesReport?.summary || patchesReport?.report_summary ||
-    "This executive summary draws from the same AI-generated findings used by the dashboard: vulnerability type, severity, explanation, and remediation guidance for each issue.";
   const summaryLines = doc.splitTextToSize(summaryText, PAGE_WIDTH);
   doc.text(summaryLines, MARGIN, y);
   y += summaryLines.length * 5 + 10;
+
+  if (patches.length > 0) {
+    doc.setFontSize(8.5); doc.setFont("helvetica","bold"); doc.setTextColor(45,45,45);
+    doc.text("Key vulnerability explanations:", MARGIN, y);
+    y += 8;
+
+    patches.forEach((p, i) => {
+      const label = `${i + 1}. ${p.type || "Vulnerability"} (${String(p.severity || "Unknown").toUpperCase()})`;
+      doc.setFontSize(8.5); doc.setFont("helvetica","bold"); doc.setTextColor(60,60,60);
+      doc.text(label, MARGIN, y);
+      y += 6;
+
+      doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(50,50,50);
+      const expl = doc.splitTextToSize(p.explication || "—", PAGE_WIDTH - 4);
+      doc.text(expl, MARGIN + 4, y);
+      y += expl.length * 5 + 8;
+    });
+  }
 
   const verdictLines = doc.splitTextToSize(verdictMsg, PAGE_WIDTH);
   doc.text(verdictLines, MARGIN, y);
   y += verdictLines.length * 5 + 12;
 
-  // One summary per patch
-  patches.forEach((p, i) => {
-    const meta = resolveSevMeta(p.severity);
-    doc.setFillColor(...meta.col); doc.circle(MARGIN + 2.5, y - 2.5, 2.2, "F");
-    doc.setFontSize(9.5); doc.setFont("helvetica","bold"); doc.setTextColor(20, 20, 20);
-    doc.text(`${i + 1}. ${p.type || "Vulnerability"}`, MARGIN + 9, y);
-    y += 10;
-
-    doc.setFontSize(8.5); doc.setFont("helvetica","normal"); doc.setTextColor(60, 60, 60);
-    const expl = doc.splitTextToSize(p.explication || "—", PAGE_WIDTH - 14);
-    doc.text(expl, MARGIN + 9, y);
-    y += expl.length * 5 + 8;
-
-    if (p.cve_urls?.length || p.cwe_urls?.length) {
-      const linkLines = [
-        ...(p.cve_urls || []).slice(0, 2).map((url) => `CVE: ${url}`),
-        ...(p.cwe_urls || []).slice(0, 2).map((url) => `CWE: ${url}`),
-      ];
-      if (linkLines.length > 0) {
-        doc.setFontSize(8); doc.setFont("helvetica","italic"); doc.setTextColor(90, 90, 90);
-        doc.text(linkLines, MARGIN + 9, y);
-        y += linkLines.length * 5 + 8;
-      }
-    }
-
-    if (y > 760) { doc.addPage(); y = 50; }
-  });
-
   y += 6;
 
-  // SECTION 2 — VULNERABILITY SUMMARY TABLE
-  doc.setFillColor(240,244,255); doc.rect(MARGIN, y, PAGE_WIDTH, 8, "F");
-  doc.setFillColor(26,60,140);   doc.rect(MARGIN, y, 3, 8, "F");
-  doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(26,60,140);
-  doc.text("VULNERABILITY SUMMARY TABLE", MARGIN + 7, y + 5.5);
-  y += 14;
 
-  const colTypeW = PAGE_WIDTH * 0.30;
-  const colSevW = 70;
-  const colSolW = PAGE_WIDTH - colTypeW - colSevW;
-  const colTypeX = MARGIN;
-  const colSevX = MARGIN + colTypeW;
-  const colSolX = colSevX + colSevW;
-
-  // Table header
-  doc.setFillColor(26, 60, 140); doc.rect(MARGIN, y, PAGE_WIDTH, 9, "F");
-  doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
-  doc.text("Type", colTypeX + 3, y + 6);
-  doc.text("Severity", colSevX + 3, y + 6);
-  doc.text("Solution", colSolX + 3, y + 6);
-  y += 10;
-
-  // Table rows
-  patches.forEach((p, i) => {
-    const meta = resolveSevMeta(p.severity);
-    const typeLines = doc.splitTextToSize(p.type || "—", colTypeW - 6);
-    const solLines = doc.splitTextToSize(p.solution || "—", colSolW - 6);
-    const rowH = Math.max(typeLines.length, solLines.length, 1) * 5 + 6;
-
-    if (y + rowH > 770) {
-      doc.addPage();
-      y = 50;
-      doc.setFillColor(26, 60, 140); doc.rect(MARGIN, y, PAGE_WIDTH, 9, "F");
-      doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
-      doc.text("Type", colTypeX + 3, y + 6);
-      doc.text("Severity", colSevX + 3, y + 6);
-      doc.text("Solution", colSolX + 3, y + 6);
-      y += 10;
-    }
-
-    if (i % 2 === 0) { doc.setFillColor(248,249,252); doc.rect(MARGIN, y, PAGE_WIDTH, rowH, "F"); }
-    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-    doc.text(typeLines, colTypeX + 3, y + 2);
-
-    doc.setFillColor(...meta.col); doc.roundedRect(colSevX + 2, y + 1, colSevW - 4, 7, 1, 1, "F");
-    doc.setFontSize(7); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
-    doc.text(meta.label, colSevX + colSevW / 2, y + 5, { align: "center" });
-
-    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-    doc.text(solLines, colSolX + 3, y + 2);
-
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(MARGIN, y + rowH, MARGIN + PAGE_WIDTH, y + rowH);
-    y += rowH;
-  });
 
   return y;
 }
