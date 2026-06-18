@@ -1,5 +1,67 @@
 import { jsPDF } from "jspdf";
 
+/**
+ * Draws a horizontal bar chart of vulnerability counts by severity into a jsPDF document.
+ *
+ * Replaces the old dot+number list with proportional bars, so the reader can
+ * compare severities visually instead of just reading numbers.
+ *
+ * @param {jsPDF} doc      - the jsPDF document instance
+ * @param {object} scan    - object with a `.stats` map, e.g. { critical: 4, high: 9, ... }
+ * @param {object} sevMeta - ordered map of severity key -> { label, col: [r,g,b] }
+ * @param {number} MARGIN  - left margin (matches your existing layout)
+ * @param {number} y       - starting y position; returns the new y after drawing
+ * @returns {number} the y position after the chart, so you can continue laying out content below it
+ */
+export function drawVulnerabilityChart(doc, scan, sevMeta, MARGIN, CW, y) {
+  const entries = Object.entries(sevMeta);
+  const counts = entries.map(([k]) => scan.stats?.[k] || 0);
+  const maxCount = Math.max(...counts, 1); // avoid divide-by-zero when all counts are 0
+
+  const chartWidth = 130;      // max pixel width a full bar can take
+  const barHeight = 5.5;
+  const barGap = 4;            // vertical gap between bars
+  const labelWidth = 28;       // reserved space for severity labels on the left
+  const barStartX = MARGIN + labelWidth;
+
+  doc.setFillColor(240,244,255); doc.rect(MARGIN, y, CW, 8, "F");
+  doc.setFillColor(26,60,140);   doc.rect(MARGIN, y, 3, 8, "F");
+  doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(26,60,140);
+  doc.text("Vulnerability distribution".toUpperCase(), MARGIN + 7, y + 5.5);
+  y += 14;
+
+  entries.forEach(([k, meta], i) => {
+    const count = counts[i];
+    const barLength = (count / maxCount) * chartWidth;
+
+    // Severity label, right-aligned against the bar start
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    doc.text(meta.label, barStartX - 3, y + barHeight - 1.5, { align: "right" });
+
+    // Track (light background) so short bars still show full scale context
+    doc.setFillColor(235, 235, 235);
+    doc.roundedRect(barStartX, y, chartWidth, barHeight, 1, 1, "F");
+
+    // Actual bar, proportional to count
+    if (barLength > 0) {
+      doc.setFillColor(...meta.col);
+      doc.roundedRect(barStartX, y, Math.max(barLength, 2), barHeight, 1, 1, "F");
+    }
+
+    // Count, placed just after the bar (or inside track start if bar is 0)
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...meta.col);
+    doc.text(`${count}`, barStartX + chartWidth + 4, y + barHeight - 1.5);
+
+    y += barHeight + barGap;
+  });
+
+  return y + 2; // small trailing gap before whatever content comes next
+}
+
 /* ════════════════════════════════════════════════════════════
    PDF GENERATION (jsPDF)
    → Professional white-paper layout
@@ -8,15 +70,31 @@ import { jsPDF } from "jspdf";
    → Following pages: one vulnerability per page with
      entry point (red) and AI-generated fix (green)
 ════════════════════════════════════════════════════════════ */
-export function generatePDF(scan) {
-  const doc     = new jsPDF();
-  const patches = scan.patches || [];
-  const W       = doc.internal.pageSize.getWidth();
-  const MARGIN  = 18;
-  const CW      = W - MARGIN * 2;
+function parseReportValue(value) {
+  if (!value) return undefined;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof value === "object") return value;
+  return undefined;
+}
 
-  const scoreCol = scan.score < 40 ? [192,0,0] : scan.score < 70 ? [180,95,0] : [0,128,80];
-  const verdict  = scan.score < 40 ? "GOOD" : scan.score < 70 ? "MODERATE" : "CRITICAL";
+export function generatePDF(scan) {
+  const doc = new jsPDF();
+  const patchesReport = parseReportValue(scan.patches_report);
+  const patches = scan.patches || patchesReport?.patches || [];
+  const totalVulnerabilities = scan.total_patches ?? patches.length;
+  const W = doc.internal.pageSize.getWidth();
+  const MARGIN = 18;
+  const CW = W - MARGIN * 2;
+
+  const score = typeof scan.score === "number" ? scan.score : 0;
+  const scoreCol = score < 40 ? [192,0,0] : score < 70 ? [180,95,0] : [0,128,80];
+  const verdict = score < 40 ? "GOOD" : score < 70 ? "MODERATE" : "CRITICAL";
 
   const sevMeta = {
     CRITICAL: { label: "Critical", col: [192,0,0]   },
@@ -97,7 +175,9 @@ export function generatePDF(scan) {
     ["Target URL",      scan.url || "—"],
     ["Scan Date",       scan.generated_at ? new Date(scan.generated_at).toLocaleString("en-US") : new Date().toLocaleString("en-US")],
     ["Scan ID",         scan.scan_id || "—"],
-    ["Vulnerabilities", `Total vulnerabilities found: ${patches.length}`],
+    ["Vulnerabilities", `Total vulnerabilities found: ${totalVulnerabilities}`],
+    ["Pages crawled",   scan.pages_crawled != null ? String(scan.pages_crawled) : "—"],
+    ["Scan duration",   scan.scan_duration_total != null ? `${scan.scan_duration_total}s` : "—"],
   ];
   infoRows.forEach(([k, v], i) => {
     if (i % 2 === 0) { doc.setFillColor(248,249,252); doc.rect(MARGIN, y - 3, CW, 11, "F"); }
@@ -119,50 +199,16 @@ export function generatePDF(scan) {
   doc.setFontSize(9); doc.setTextColor(...scoreCol);
   doc.text(`Verdict : ${verdict}`, MARGIN + 115, y + 27);
   y += 44;
-
-  doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(20,20,20);
-  doc.text("Vulnerability distribution:", MARGIN, y); y += 8;
-  Object.entries(sevMeta).forEach(([k, meta]) => {
-    doc.setFillColor(...meta.col); doc.circle(MARGIN + 3, y + 2, 2.5, "F");
-    doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-    doc.text(`${meta.label} :`, MARGIN + 9, y + 5);
-    doc.setFont("helvetica","bold"); doc.setTextColor(...meta.col);
-    doc.text(`${scan.stats?.[k] || 0}`, MARGIN + 48, y + 5);
-    y += 9;
-  });
+  y = drawVulnerabilityChart(doc, scan, sevMeta, MARGIN, CW, y);
 
   // PAGE 2 : EXECUTIVE SUMMARY + TABLE
   y = newPage();
-  y = sectionTitle(y, "Executive Summary");
-  const reco = scan.score < 40
+  const verdictMsg = scan.score >= 70
     ? "Critical vulnerabilities were detected. Immediate remediation is strongly recommended before any public exposure of the site."
-    : scan.score < 70
+    : scan.score < 70 && scan.score >= 40
     ? "Moderate risks were identified. It is advised to address these vulnerabilities promptly to reduce your attack surface."
     : "The site shows a satisfactory security posture. Continue to monitor regularly and follow best practices.";
-  doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-  const recoLines = doc.splitTextToSize(reco, CW);
-  doc.text(recoLines, MARGIN, y); y += recoLines.length * 5 + 12;
-
-  y = sectionTitle(y, "Vulnerability Summary Table");
-  doc.setFillColor(26,60,140); doc.rect(MARGIN, y, CW, 9, "F");
-  doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
-  doc.text("#", MARGIN+2, y+6); doc.text("Type", MARGIN+14, y+6);
-  doc.text("File", MARGIN+68, y+6); doc.text("Field", MARGIN+108, y+6);
-  doc.text("Severity", MARGIN+146, y+6);
-  y += 9;
-  patches.forEach((p, i) => {
-    y = checkY(y, 10);
-    if (i % 2 === 0) { doc.setFillColor(248,249,252); doc.rect(MARGIN, y, CW, 9, "F"); }
-    const meta = sevMeta[p.severity?.toUpperCase()] || sevMeta.INFO;
-    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
-    doc.text(`${i+1}`, MARGIN+2, y+6);
-    doc.text(doc.splitTextToSize(p.type||"—",52)[0], MARGIN+14, y+6);
-    doc.text(doc.splitTextToSize(p.fichier||"—",36)[0], MARGIN+68, y+6);
-    doc.text(doc.splitTextToSize(p.champ||"—",34)[0], MARGIN+108, y+6);
-    doc.setFont("helvetica","bold"); doc.setTextColor(...meta.col);
-    doc.text(meta.label, MARGIN+146, y+6);
-    y += 9;
-  });
+  y = renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, CW, y, verdictMsg);
 
   // DETAIL PAGES: one page per vulnerability
   patches.forEach((patch, idx) => {
@@ -209,4 +255,134 @@ export function generatePDF(scan) {
 
   const site = (scan.url||"scan").replace(/https?:\/\//,"").replace(/[^a-zA-Z0-9]/g,"_").slice(0,30);
   doc.save(`Scanlyzer_${site}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+/**
+ * Renders page 2 content: EXECUTIVE SUMMARY (verdict + per-patch descriptions)
+ * followed by VULNERABILITY SUMMARY TABLE (Type / Severity / Solution).
+ *
+ * @param {jsPDF} doc
+ * @param {object} scan       - full normalized scan report object
+ * @param {array} patches      - array of vulnerability patches from scan.patches
+ * @param {object} sevMeta     - severity -> { label, col:[r,g,b] } map
+ * @param {number} MARGIN
+ * @param {number} PAGE_WIDTH  - usable content width
+ * @param {number} y           - starting y position
+ * @param {string} verdictMsg  - verdict message to display
+ * @returns {number} new y position after everything drawn
+ */
+function renderPage2Findings(doc, scan, patches, sevMeta, MARGIN, PAGE_WIDTH, y, verdictMsg) {
+  // Helper: resolve severity meta safely
+  function resolveSevMeta(sev) {
+    const key = Object.keys(sevMeta).find(
+      k => k.toLowerCase() === String(sev || "").toLowerCase()
+    );
+    return key ? sevMeta[key] : { label: sev || "Unknown", col: [100, 100, 100] };
+  }
+
+  // SECTION 1 — EXECUTIVE SUMMARY
+  doc.setFillColor(240,244,255); doc.rect(MARGIN, y, PAGE_WIDTH, 8, "F");
+  doc.setFillColor(26,60,140);   doc.rect(MARGIN, y, 3, 8, "F");
+  doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(26,60,140);
+  doc.text("EXECUTIVE SUMMARY", MARGIN + 7, y + 5.5);
+  y += 14;
+
+  doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
+  const summaryText = scan.report_summary || scan.summary || patchesReport?.summary || patchesReport?.report_summary ||
+    "This executive summary draws from the same AI-generated findings used by the dashboard: vulnerability type, severity, explanation, and remediation guidance for each issue.";
+  const summaryLines = doc.splitTextToSize(summaryText, PAGE_WIDTH);
+  doc.text(summaryLines, MARGIN, y);
+  y += summaryLines.length * 5 + 10;
+
+  const verdictLines = doc.splitTextToSize(verdictMsg, PAGE_WIDTH);
+  doc.text(verdictLines, MARGIN, y);
+  y += verdictLines.length * 5 + 12;
+
+  // One summary per patch
+  patches.forEach((p, i) => {
+    const meta = resolveSevMeta(p.severity);
+    doc.setFillColor(...meta.col); doc.circle(MARGIN + 2.5, y - 2.5, 2.2, "F");
+    doc.setFontSize(9.5); doc.setFont("helvetica","bold"); doc.setTextColor(20, 20, 20);
+    doc.text(`${i + 1}. ${p.type || "Vulnerability"}`, MARGIN + 9, y);
+    y += 10;
+
+    doc.setFontSize(8.5); doc.setFont("helvetica","normal"); doc.setTextColor(60, 60, 60);
+    const expl = doc.splitTextToSize(p.explication || "—", PAGE_WIDTH - 14);
+    doc.text(expl, MARGIN + 9, y);
+    y += expl.length * 5 + 8;
+
+    if (p.cve_urls?.length || p.cwe_urls?.length) {
+      const linkLines = [
+        ...(p.cve_urls || []).slice(0, 2).map((url) => `CVE: ${url}`),
+        ...(p.cwe_urls || []).slice(0, 2).map((url) => `CWE: ${url}`),
+      ];
+      if (linkLines.length > 0) {
+        doc.setFontSize(8); doc.setFont("helvetica","italic"); doc.setTextColor(90, 90, 90);
+        doc.text(linkLines, MARGIN + 9, y);
+        y += linkLines.length * 5 + 8;
+      }
+    }
+
+    if (y > 760) { doc.addPage(); y = 50; }
+  });
+
+  y += 6;
+
+  // SECTION 2 — VULNERABILITY SUMMARY TABLE
+  doc.setFillColor(240,244,255); doc.rect(MARGIN, y, PAGE_WIDTH, 8, "F");
+  doc.setFillColor(26,60,140);   doc.rect(MARGIN, y, 3, 8, "F");
+  doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(26,60,140);
+  doc.text("VULNERABILITY SUMMARY TABLE", MARGIN + 7, y + 5.5);
+  y += 14;
+
+  const colTypeW = PAGE_WIDTH * 0.30;
+  const colSevW = 70;
+  const colSolW = PAGE_WIDTH - colTypeW - colSevW;
+  const colTypeX = MARGIN;
+  const colSevX = MARGIN + colTypeW;
+  const colSolX = colSevX + colSevW;
+
+  // Table header
+  doc.setFillColor(26, 60, 140); doc.rect(MARGIN, y, PAGE_WIDTH, 9, "F");
+  doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
+  doc.text("Type", colTypeX + 3, y + 6);
+  doc.text("Severity", colSevX + 3, y + 6);
+  doc.text("Solution", colSolX + 3, y + 6);
+  y += 10;
+
+  // Table rows
+  patches.forEach((p, i) => {
+    const meta = resolveSevMeta(p.severity);
+    const typeLines = doc.splitTextToSize(p.type || "—", colTypeW - 6);
+    const solLines = doc.splitTextToSize(p.solution || "—", colSolW - 6);
+    const rowH = Math.max(typeLines.length, solLines.length, 1) * 5 + 6;
+
+    if (y + rowH > 770) {
+      doc.addPage();
+      y = 50;
+      doc.setFillColor(26, 60, 140); doc.rect(MARGIN, y, PAGE_WIDTH, 9, "F");
+      doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
+      doc.text("Type", colTypeX + 3, y + 6);
+      doc.text("Severity", colSevX + 3, y + 6);
+      doc.text("Solution", colSolX + 3, y + 6);
+      y += 10;
+    }
+
+    if (i % 2 === 0) { doc.setFillColor(248,249,252); doc.rect(MARGIN, y, PAGE_WIDTH, rowH, "F"); }
+    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
+    doc.text(typeLines, colTypeX + 3, y + 2);
+
+    doc.setFillColor(...meta.col); doc.roundedRect(colSevX + 2, y + 1, colSevW - 4, 7, 1, 1, "F");
+    doc.setFontSize(7); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
+    doc.text(meta.label, colSevX + colSevW / 2, y + 5, { align: "center" });
+
+    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(40,40,40);
+    doc.text(solLines, colSolX + 3, y + 2);
+
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+    doc.line(MARGIN, y + rowH, MARGIN + PAGE_WIDTH, y + rowH);
+    y += rowH;
+  });
+
+  return y;
 }

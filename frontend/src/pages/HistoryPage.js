@@ -114,20 +114,10 @@ export function HistoryPage({ authUser, onBack }) {
     }
   };
 
-  const toggleExpand = async (entry) => {
+  const fetchFullReport = async (entry) => {
     const id = entry.scan_id;
+    if (expandedData[id]) return expandedData[id];
 
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-
-    setExpandedId(id);
-
-    // If we already fetched the full report, don't re-fetch
-    if (expandedData[id]) return;
-
-    // Fetch full report
     setLoadingReport(id);
     try {
       const token = authUser?.token || localStorage.getItem("vulnscan_token");
@@ -139,11 +129,27 @@ export function HistoryPage({ authUser, onBack }) {
       if (res.ok && data) {
         const reportData = normalizeReport(data, entry.url || "");
         setExpandedData(prev => ({ ...prev, [id]: reportData }));
+        return reportData;
       }
     } catch (e) {
       console.error("Error loading report:", e);
     } finally {
       setLoadingReport(null);
+    }
+    return null;
+  };
+
+  const toggleExpand = async (entry) => {
+    const id = entry.scan_id;
+
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+
+    setExpandedId(id);
+    if (!expandedData[id]) {
+      await fetchFullReport(entry);
     }
   };
 
